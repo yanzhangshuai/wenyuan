@@ -1,0 +1,90 @@
+{
+  "_comment": "金标：**穷尽标注**《儒林外史》第一回。chapterRange 的单位是**回号**（与 chapters.ordinal 一致；前置内容为 0，不参与）。与同目录 `rulin-waishi-1-3.json` 的分工是**刻意**的：那份覆盖 1–3 回但只列 9 个实体，**召回率导向**、精确率不可读；本份只覆盖第一回但逐段穷尽，是本仓库里第一份让**精确率变成真数字**的金标（切片内 45 个实体 vs 金标 43 个，满足 `isPrecisionReadable` 的 gold×2 ≥ slice）。标注约定、边界条目、以及本轮由标注过程**反过来发现**的系统缺陷，全部记在 annotationNotes 里，逐条带回号 + 段号 + 原文引用。",
+  "workTitle": "儒林外史",
+  "chapterRange": [1, 1],
+  "annotationNotes": [
+    "【2026-10-10 批次 9：段号坐标已整体换算，两条噪声行已删除】导入路径本轮接入了 `stripStructuralNoise`（见 `importing/canonicalize.ts`），《儒林外史》每回头部的 `本章字数:N` 与尾部的 `------------------` 被删除。实测每回叙事段号因此 **−1**（第一回 28 段 → **26 段**）。本文件全文的段号**已同步换算**，可直接对当前库核对。⚠️ 另：本文件里若干「把 FP / FN 的名字摊开」的笔记记录的是**改前基线**（批次 9 之前）；批次 9 同时修了「提及跨回搬运」（N1）与「聚合口径 ≠ 落库口径」（N16），因此那些清单里的条目会变化 —— 变化后的数字以重跑后的评测报告为准。",
+    "【标注约定·收】两类：① 有专名的个体（人名 / 地名 / 组织 / 具名概念）；② **唯一指认某个体**的称谓 —— 本文件只有 `王母`，标 `TITLE_ONLY`，沿用 `rulin-waishi-1-3.json` 已确立的「姓氏 + 亲属称谓」约定（原文只称「母亲」）。",
+
+    "【标注约定·不收】不指认特定个体的**泛称 / 敬称 / 亲属称谓**与**纯通名**。本回被排除的逐条列出（回号 1 + 段号）：`老爷`(8,9,12)、`头翁`(8)、`老父台`(8)、`老爹`(12)、`亲家`(8)、`小婿`(7)、`敝亲家`(7)、`房主人`(7)、`胖子`/`瘦子`/`胡子`(5–7)、`小二`(11)、`母亲`(2,3,4,12,13,17,24)、`婆婆`(10)、`皇上`(7)、`举人`(7)、`学者`(7)、`古人`(5)、`荷花`(5,8)、`咨议参军`(24)、`甘结`/`票子`/`帖子`(8)、`邸钞`(21)、`壬午`(7)、`公馆`/`衙门`/`草堂`/`村学堂`(各处)。其中 `母亲`/`婆婆` 已并入 `王母`，`小二` 已并入 `秦大汉` 的别名 `秦小二汉`。",
+
+    "【为什么「不收泛称」这条约定是**本轮的重点**，而不只是洁癖】穷尽标注的过程反过来暴露了一个真实缺陷：**系统把泛称当成了别名，于是把跨回人物的提及拖进了第一回**。① `王公`（规范名全书 10 次，**第一回 0 次**）在库里的别名含 `老父台`，而 `老父台` 出现在第一回 段 8（危素对时知县的敬称）→ `王公` 在第一回 段 8 被记了一次提及；② `严大位`（全书 3 次，**第一回 0 次**，是第二回的严贡生）的别名含 `老大`，而 段 11 有 `王老大` → 又被记了一次。→ 第一回切片里凭空多出**两个不属于第一回**的人物。根因是 P6 落库时按「归一化成员键 → 全库段落索引」取提及（`persist-graph.ts` 第 137–143 行），**没有把提及限制在该实体的观测章节内**。✅ **已于 2026-10-10 批次 9 修复**（提及限制在观测章节内，丢弃量写进 `analysis_issues` 的 `mention_scope_filtered`）。本文件保留这条记录，因为它是这份金标之所以要「穷尽标注」的直接原因。",
+
+    "【子串只保留长形式】`会稽`（段 23/25 的 3 次**全部**在 `会稽山` 之内）与 `布政司`（段 23 的 1 次在 `浙江布政司` 之内）都不是独立实体，本文件只收 `会稽山` / `浙江布政司`。系统当前**同时**产出长短两份（`会稽山`+`会稽`、`浙江布政司`+`布政司`），短的那份在本口径下计 FP。`王家` 同理（段 11 的 `王家集`）。注意：`findPrefixConflicts` 只检测**前缀**包含，抓不到这类子串关系。",
+
+    "【边界条目·收】`钟楼街`（段 6「比京里钟楼街的房子还大些」）：具名街道，一次性比喻用法。按「有专名即收」的机械约定收录 —— 这一条会让系统难看一点（精确率 81.82% → 80.00%），仍收。`元朝`（段 2「元朝末年」）同理收录（ORGANIZATION，朝代名）。",
+
+    "【边界条目·不收】`举人`（段 7「县尊是壬午举人」）：它是**人的类别**，不是具名的具体事物。同段被收的 `五经`/`四书`/`八股文` 是**具名经典/文体**，二者性质不同。这是本文件里唯一「收了会让系统好看一点」的条目，仍按约定不收。",
+
+    "【类型错误对指标不可见】`洪武` 被系统标成 PERSON（年号应为 CONCEPT）、`荷花` 被标成 PERSON（植物，应为 CONCEPT 或不收）、`文昌帝君` 标成 CONCEPT 尚可。但实体指标**只比成员名、不比 type**（`metrics.ts` 的 `computeEntityMetric`）→ `洪武` 无论标成什么类型都算 TP。**因此本文件无法充当类型准确率的尺子**，类型质量只能靠 `_wb_graph_audit.mjs` 一类的审计。",
+
+    "【度量限制·成员名集合匹配】`文昌帝君`（别名 `文昌`）会命中本文件的 `文昌` 并计为 TP —— 尽管第一回原文只有 `文昌`（段 22「你看贯索犯文昌」，星官名），`文昌帝君` 全书 8 次全在后回。这是**指标口径的正确行为**（同一实体的不同写法，认可任一即算召回），但它同时说明**本口径看不见「过度归一化」**。留档不改。",
+
+    "【关系·目录外语义的就近代码】关系目录是闭集 10 码（`src/lib/relations.ts`）。① `翟买办 → 秦大汉`：段 8「秦老的儿子秦大汉**拜在他名下，叫他乾爷**」是**义父子**，目录没有「义父子/乾亲」，就近取 `父子`；系统给的是 `主仆`，本口径下计 1 FP + 1 FN。② `太祖 → 危素`：段 21「在太祖面前自称老臣」「太祖大怒，发往和州守余阙墓」是**君臣**，目录同样没有，就近取 `主仆`（系统给的正是 `主仆`，计 TP）。",
+
+    "【关系·本回新增、系统未产出】`母子 王母→王冕`（段 2「他母亲做些针黹，供给他到村学堂里去读书」、段 17「母亲老病卧床」、段 25 葬于会稽山下）；`主仆 时仁→翟买办`（段 8「这人姓翟，是诸暨县一个**头役**，又是**买办**」+ 段 10「翟买办**跪在轿前禀道**」）。前者是 `rulin-waishi-1-3.json` 已登记的**真实缺口**；后者是**隐式从属** —— 系统当前依赖显式称谓词，`头役`/`买办` 不在其词表内。",
+
+    "【异文与语料质量】`秦致`（段 21「到了洪武四年，秦致又进城里」，**全书仅此 1 次**）与紧接的「王冕指与秦老看道」指同一人，故并入 `秦老` 的别名（系统未产出该写法；不影响命中，`秦老` 已命中）。另：本回原有的两条非叙事内容（原段 1 `本章字数:7415`、原末段 `------------------`）**已由导入期的 `stripStructuralNoise` 删除**（批次 9），故当前库内第一回只有 26 段；段 2 `嵌□磊落`、段 24 `□蛸满室` / `蓬莴蔽径` 为 OCR 缺字。",
+
+    "【语料与库的同源性核对】本文件的段号取自**真实解析器**（`parseChapters`）当前对 `books/儒林外史.txt` 的输出，与数据库里第一回的 **26 个段落逐段一致**（含「行长重尾」判据改动与批次 9 的删行）。⚠️ 段落总数因此从 1234 降到 **1123**（每回删 2 行噪声）。本文件只对第一回成立（其余章节没有穷尽标注）。"
+  ],
+  "entities": [
+    { "canonical": "王冕", "type": "PERSON", "nameType": "NAMED", "aliases": ["王相公", "王老大", "王大叔", "王参军", "王冕先生"] },
+    { "canonical": "秦老", "type": "PERSON", "nameType": "NAMED", "aliases": ["秦老爷", "秦致"] },
+    { "canonical": "王母", "type": "PERSON", "nameType": "TITLE_ONLY", "aliases": [] },
+    { "canonical": "危素", "type": "PERSON", "nameType": "NAMED", "aliases": ["危老先生", "危老爷", "危老师"] },
+    { "canonical": "时仁", "type": "PERSON", "nameType": "NAMED", "aliases": ["时知县"] },
+    { "canonical": "翟买办", "type": "PERSON", "nameType": "NAMED", "aliases": ["翟头役"] },
+    { "canonical": "秦大汉", "type": "PERSON", "nameType": "NAMED", "aliases": ["秦小二汉"] },
+    { "canonical": "太祖", "type": "PERSON", "nameType": "NAMED", "aliases": ["太祖皇帝", "吴王", "滁阳王"] },
+    { "canonical": "方国珍", "type": "PERSON", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "张士诚", "type": "PERSON", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "陈友谅", "type": "PERSON", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "屈原", "type": "PERSON", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "段干木", "type": "PERSON", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "泄柳", "type": "PERSON", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "余阙", "type": "PERSON", "nameType": "NAMED", "aliases": [] },
+
+    { "canonical": "诸暨县", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "七柳湖", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "山东", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "济南府", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "浙江", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "金陵", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "应天", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "和州", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "滁阳", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "苏州", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "湖广", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "江南", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "河南", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "黄河", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "王家集", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "会稽山", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "钟楼街", "type": "LOCATION", "nameType": "NAMED", "aliases": [] },
+
+    { "canonical": "元朝", "type": "ORGANIZATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "大明", "type": "ORGANIZATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "礼部", "type": "ORGANIZATION", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "浙江布政司", "type": "ORGANIZATION", "nameType": "NAMED", "aliases": [] },
+
+    { "canonical": "楚辞图", "type": "CONCEPT", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "五经", "type": "CONCEPT", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "四书", "type": "CONCEPT", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "八股文", "type": "CONCEPT", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "洪武", "type": "CONCEPT", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "文昌", "type": "CONCEPT", "nameType": "NAMED", "aliases": [] },
+    { "canonical": "贯索", "type": "CONCEPT", "nameType": "NAMED", "aliases": [] }
+  ],
+  "relations": [
+    { "typeCode": "母子", "sourceCanonical": "王母", "targetCanonical": "王冕" },
+    { "typeCode": "父子", "sourceCanonical": "秦老", "targetCanonical": "秦大汉" },
+    { "typeCode": "朋友", "sourceCanonical": "秦老", "targetCanonical": "王冕" },
+    { "typeCode": "主仆", "sourceCanonical": "秦老", "targetCanonical": "王冕" },
+    { "typeCode": "师生", "sourceCanonical": "危素", "targetCanonical": "时仁" },
+    { "typeCode": "父子", "sourceCanonical": "翟买办", "targetCanonical": "秦大汉" },
+    { "typeCode": "主仆", "sourceCanonical": "太祖", "targetCanonical": "危素" },
+    { "typeCode": "主仆", "sourceCanonical": "时仁", "targetCanonical": "翟买办" },
+    { "typeCode": "仇敌", "sourceCanonical": "太祖", "targetCanonical": "方国珍" }
+  ]
+}

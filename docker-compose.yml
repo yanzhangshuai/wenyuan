@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: wenyuan-v3-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: wenyuan_v3
+      POSTGRES_USER: plotweaver
+      POSTGRES_PASSWORD: plotweaver
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plotweaver -d wenyuan_v3"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:

@@ -1,0 +1,22 @@
+# 行尾统一为 LF。
+#
+# 为什么需要：Windows 侧全局 `core.autocrlf=true` 会在 checkout 时把文本文件
+# 转成 CRLF，而本项目的权威运行环境是 WSL（LF）。历史上已因「文本模式读写」
+# 静默引入 CRLF 导致过一次内容事故。这里用 `.gitattributes` 把仓库**钉死在 LF**，
+# 与平台、与个人 git 配置都无关。
+* text=auto eol=lf
+
+# 二进制文件：不做任何行尾转换。
+*.woff2  binary
+*.woff   binary
+*.ttf    binary
+*.otf    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.pdf    binary
+*.zip    binary
+*.gz     binary

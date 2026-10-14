@@ -1,0 +1,37 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# next
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# test
+coverage/
+
+# db
+drizzle/meta/_journal.json.bak
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# eval artifacts
+data/evals/**/results.json
+data/storage/
+# 本机 PGlite 数据目录（pnpm db:local）
+data/pglite/
+
+# 开发期临时产物（一次性探针 / 日志 / 批次回滚点）
+# 这些是本地调试留下的，不属于交付集 —— 统一前缀 `_wb_`，一律不入库。
+_wb_*
+

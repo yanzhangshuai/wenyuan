@@ -1,0 +1,217 @@
+/* ====================================================================
+   丹青 (Danqing) - 深色古风
+   ====================================================================
+   设计理念：紫檀深褐背景 + 暖象牙文字 + 朱砂红强调色
+   视觉标签：古卷、宣纸、朱砂印、紫檀木
+   明暗类型：深色主题（默认主题 :root）
+   适用场景：沉浸式古典阅读、人物关系图谱浏览
+   依赖组件：library-ambient（首页氛围背景）
+   维护说明：色值采用 oklch 色彩空间，与 sheji 参考项目严格对齐
+   ==================================================================== */
+:root, [data-theme="danqing"] {
+  /* --- 基础色阶 --- */
+  /* 主背景：紫檀深褐 */
+  --background: oklch(0.18 0.02 45);
+  /* 前景：暖象牙色文字 */
+  --foreground: oklch(0.92 0.02 85);
+  /* 卡片：比背景稍浅的褐色，形成视觉层次 */
+  --card: oklch(0.22 0.025 40);
+  --card-foreground: oklch(0.92 0.02 85);
+  /* 弹窗：介于背景与卡片之间 */
+  --popover: oklch(0.20 0.022 42);
+  --popover-foreground: oklch(0.92 0.02 85);
+
+  /* --- 语义色 --- */
+  /* 主色：朱砂红——中国古风经典强调色 */
+  --primary: oklch(0.55 0.18 25);
+  --primary-foreground: oklch(0.95 0.01 85);
+  /* 次要：深褐中间色 */
+  --secondary: oklch(0.28 0.03 45);
+  --secondary-foreground: oklch(0.88 0.02 80);
+  /* 静音：低饱和暗褐，用于辅助文字和禁用状态 */
+  --muted: oklch(0.25 0.02 45);
+  --muted-foreground: oklch(0.65 0.02 70);
+  /* 强调：与主色相同的朱砂红 */
+  --accent: oklch(0.55 0.18 25);
+  --accent-foreground: oklch(0.95 0.01 85);
+  /* 危险/删除操作 */
+  --destructive: oklch(0.50 0.20 25);
+  --destructive-foreground: oklch(0.95 0.01 85);
+
+  /* --- 边界与交互 --- */
+  /* 边框：暖褐色线条，与背景形成柔和分隔 */
+  --border: oklch(0.32 0.03 45);
+  /* 输入框底色：深褐 */
+  --input: oklch(0.25 0.025 45);
+  /* 聚焦环：朱砂红 */
+  --ring: oklch(0.55 0.18 25);
+  --radius: 0.375rem;
+  /* 主色透明背景（bg-primary-subtle） */
+  --primary-subtle: oklch(0.55 0.18 25 / 0.10);
+  /* 交互层级：hover 只给轻薄染色，active 再抬一档。 */
+  --interactive-hover-bg: oklch(0.55 0.18 25 / 0.12);
+  --interactive-hover-fg: oklch(0.92 0.02 85);
+  --interactive-hover-border: oklch(0.55 0.18 25 / 0.18);
+  --interactive-active-bg: oklch(0.55 0.18 25 / 0.26);
+  --interactive-active-fg: oklch(0.95 0.01 85);
+  --interactive-active-border: oklch(0.55 0.18 25 / 0.34);
+  --interactive-active-hover-bg: oklch(0.55 0.18 25 / 0.32);
+  --interactive-link-hover-fg: oklch(0.55 0.18 25 / 0.86);
+  --interactive-link-active-fg: oklch(0.55 0.18 25);
+
+  /* --- 图谱专用色 --- */
+  /* 节点主色：朱砂红 / 辅色：暖金 */
+  --graph-node: oklch(0.55 0.18 25);
+  --graph-node-secondary: oklch(0.65 0.12 55);
+  /* 边线：暖褐 */
+  --graph-edge: oklch(0.45 0.08 45);
+  /* 高亮：明亮暖金 */
+  --graph-highlight: oklch(0.70 0.20 60);
+  /* 节点 hover：略浅暖金描边，深色背景下更清晰。 */
+  --graph-node-hover: oklch(0.76 0.16 58);
+
+  /* --- 侧边栏 --- */
+  /* 侧边栏背景：最深的紫檀色 */
+  --sidebar: oklch(0.16 0.018 45);
+  --sidebar-foreground: oklch(0.90 0.02 85);
+  --sidebar-primary: oklch(0.55 0.18 25);
+  --sidebar-primary-foreground: oklch(0.95 0.01 85);
+  --sidebar-accent: oklch(0.25 0.025 45);
+  --sidebar-accent-foreground: oklch(0.90 0.02 85);
+  --sidebar-border: oklch(0.30 0.025 45);
+  --sidebar-ring: oklch(0.55 0.18 25);
+
+  /* --- 图表色板 --- */
+  --chart-1: oklch(0.55 0.18 25);
+  --chart-2: oklch(0.60 0.12 55);
+  --chart-3: oklch(0.50 0.10 85);
+  --chart-4: oklch(0.65 0.15 35);
+  --chart-5: oklch(0.55 0.08 120);
+
+  /* --- wen-yuan 扩展：图谱细分色 --- */
+  /* 图谱画布背景 */
+  --color-graph-bg: oklch(0.14 0.018 45);
+  /* 正面关系边（蓝调） / 负面关系边（红调） */
+  --color-graph-edge-positive: oklch(0.55 0.10 230);
+  --color-graph-edge-negative: oklch(0.50 0.18 25);
+  /* 草稿节点（半透明） */
+  --color-graph-draft: oklch(0.50 0.06 70 / 0.5);
+  /* 已审核节点光晕 */
+  --color-graph-verified-glow: oklch(0.50 0.12 140 / 0.35);
+  /* 聚焦时其余节点的暗淡遮罩 */
+  --color-graph-focus-dim: oklch(0.18 0.02 45 / 0.25);
+
+  /* --- wen-yuan 扩展：书架装饰色 --- */
+  /* 首页书架横条表面 / 底边阴影 */
+  --color-shelf-surface: oklch(0.28 0.025 45);
+  --color-shelf-edge: oklch(0.22 0.02 45);
+
+  /* --- wen-yuan 扩展：书籍封面无图占位色 --- */
+  --book-cover-faction-0: #D95445;
+  --book-cover-faction-1: #5A8DB8;
+  --book-cover-faction-2: #4A9E5C;
+  --book-cover-faction-3: #D4A050;
+  --book-cover-faction-4: #9B6AB0;
+  --book-cover-faction-5: #CA7A3E;
+  --book-cover-faction-6: #1A8A8A;
+  --book-cover-faction-7: #884EA0;
+  --book-cover-faction-8: #2E4057;
+  --book-cover-faction-9: #5D6D7E;
+  --book-cover-faction-10: #A04000;
+  --book-cover-faction-11: #117A65;
+
+  /* 装饰性元素开关：1=启用书卷纹理等装饰效果 */
+  --decorative-enabled: 1;
+  font-family: var(--font-serif);
+}
+
+/* --- 首页氛围背景 ---
+   三层叠加：朱砂微光椭圆 + 古卷竖线纹理 + 纸质噪点 SVG
+   营造古籍书房的沉浸阅读氛围 */
+
+[data-theme='danqing'] .library-ambient {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse at 30% 0%, oklch(0.55 0.18 25 / 0.06) 0%, transparent 54%),
+    radial-gradient(ellipse at 72% 18%, oklch(0.44 0.10 34 / 0.04) 0%, transparent 48%),
+    linear-gradient(
+      180deg,
+      oklch(0.21 0.022 43 / 0.16) 0%,
+      transparent 22%,
+      transparent 72%,
+      oklch(0.12 0.015 42 / 0.10) 100%
+    ),
+    url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' type='fractalNoise'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* --- 书库卡片主题化（丹青）---
+   平面层次偏暖，和古卷底色保持一致，避免出现跨主题冷色面板。 */
+[data-theme='danqing'] .library-book-card-surface {
+  background-color: oklch(0.23 0.026 42 / 0.92);
+  border-color: oklch(0.36 0.03 45 / 0.62);
+  box-shadow: 0 12px 24px oklch(0.12 0.018 42 / 0.26);
+}
+
+[data-theme='danqing'] .library-book-card:hover .library-book-card-surface {
+  border-color: oklch(0.55 0.18 25 / 0.48);
+  box-shadow: 0 18px 32px oklch(0.12 0.018 42 / 0.32);
+}
+
+[data-theme='danqing'] .library-book-card-hover {
+  background-color: oklch(0.18 0.02 43 / 0.92);
+}
+
+[data-theme='danqing'] .library-book-card-status [data-slot='badge'] {
+  border-color: oklch(0.36 0.03 45 / 0.62);
+  background-color: oklch(0.17 0.02 42 / 0.74);
+}
+
+/* --- 登录页背景与右侧表单可读性 ---
+   丹青主题保留深色古卷氛围，同时为表单提供稳定对比。 */
+[data-theme='danqing'] .login-layout {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--background);
+  background-image:
+    radial-gradient(680px circle at 18% 28%, oklch(0.55 0.18 25 / 0.11) 0%, transparent 70%),
+    radial-gradient(520px circle at 86% 78%, oklch(0.45 0.12 35 / 0.08) 0%, transparent 65%);
+}
+
+[data-theme='danqing'] .login-left {
+  position: relative;
+  z-index: 1;
+  background-color: oklch(0.22 0.025 42 / 0.56);
+  border-right: 1px solid oklch(0.34 0.03 45 / 0.52);
+}
+
+[data-theme='danqing'] .login-right {
+  position: relative;
+  z-index: 1;
+  background-color: transparent;
+}
+
+[data-theme='danqing'] .login-auth-shell {
+  position: relative;
+  z-index: 1;
+  border: 1px solid oklch(0.36 0.032 44 / 0.64);
+  background-color: oklch(0.22 0.025 42 / 0.86);
+  box-shadow: 0 18px 34px oklch(0.14 0.018 42 / 0.30);
+}
+
+[data-theme='danqing'] .login-auth-shell [data-slot='tabs-list'] {
+  border: 1px solid oklch(0.36 0.03 45 / 0.48);
+  background-color: oklch(0.24 0.025 42 / 0.78);
+}
+
+[data-theme='danqing'] .login-auth-shell [data-slot='tabs-trigger'][data-state='active'] {
+  background-color: oklch(0.55 0.18 25 / 0.35);
+}
+
+[data-theme='danqing'] .login-auth-shell [data-slot='input'] {
+  border-color: oklch(0.35 0.03 45 / 0.58);
+  background-color: oklch(0.20 0.022 42 / 0.82);
+}
+
+[data-theme='danqing'] .login-auth-shell .login-divider-pill {
+  background-color: oklch(0.20 0.022 42 / 0.66);
+}

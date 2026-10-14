@@ -1,0 +1,981 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* =========================================
+   Font face declarations
+   Noto Serif SC — CJK variable font, 100+ unicode-range slices
+   Browser only downloads slices for characters actually rendered.
+   ========================================= */
+@import "../assets/fonts/noto-serif-sc/index.css";
+
+/* =========================================
+   Per-theme token definitions
+   Each theme is self-contained in its own CSS file.
+   To add a new theme: create tokens/<name>/index.css + index.ts
+   ========================================= */
+@import "../theme/tokens/danqing/index.css";
+@import "../theme/tokens/suya/index.css";
+@import "../theme/tokens/diancang/index.css";
+@import "../theme/tokens/xingkong/index.css";
+
+/* =========================================
+   Design Token Bridge (Tailwind v4 @theme)
+   Maps runtime CSS variables → Tailwind utility classes
+   ========================================= */
+
+:root {
+  --radius: 0.375rem;
+  /* 链接与控件交互语义值归各主题 token 所有；这里只保留侧栏派生变量。 */
+  --sidebar-interactive-hover-bg: color-mix(in oklch, var(--sidebar-accent) 38%, transparent);
+  --sidebar-interactive-hover-fg: var(--sidebar-accent-foreground);
+  --sidebar-interactive-active-bg: color-mix(in oklch, var(--sidebar-accent) 72%, transparent);
+  --sidebar-interactive-active-fg: var(--sidebar-accent-foreground);
+  --sidebar-interactive-active-hover-bg: color-mix(in oklch, var(--sidebar-accent) 84%, transparent);
+}
+
+@theme inline {
+  --font-sans: 'Noto Serif SC Variable', 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', serif;
+  --font-serif: 'Noto Serif SC Variable', 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* 主色透明背景 — bg-primary-subtle */
+  --color-primary-subtle: var(--primary-subtle);
+
+  /* 图谱专用 */
+  --color-graph-node: var(--graph-node);
+  --color-graph-node-secondary: var(--graph-node-secondary);
+  --color-graph-edge: var(--graph-edge);
+  --color-graph-highlight: var(--graph-highlight);
+  --color-graph-node-hover: var(--graph-node-hover);
+}
+
+/* =========================================
+   Base layer
+   ========================================= */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "kern" 1, "liga" 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
+
+  /* 滚动条美化 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-muted/30;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+
+  /* 选中文本 */
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+}
+
+html {
+  font-family: var(--font-serif);
+}
+
+/* =========================================
+   Animations
+   ========================================= */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--card) 25%,
+    var(--border) 50%,
+    var(--card) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    /* 保留交互过渡，避免卡片 hover 等状态变化被“瞬时切换”成无动画。 */
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* =========================================
+   Focus-visible accessibility ring
+   ========================================= */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* =========================================
+   Interactive hierarchy
+   ========================================= */
+
+.ui-button,
+.ui-toggle,
+.interactive-text-link,
+.viewer-header-nav-button,
+.admin-header-nav-button,
+.theme-toggle-option,
+[data-slot="menubar-trigger"],
+[data-slot="menubar-item"],
+[data-slot="menubar-checkbox-item"],
+[data-slot="menubar-radio-item"],
+[data-slot="menubar-sub-trigger"],
+[data-slot="select-trigger"],
+[data-slot="select-item"],
+[data-slot="tabs-trigger"],
+[data-slot="navigation-menu-trigger"],
+[data-slot="navigation-menu-link"],
+[data-slot="dropdown-menu-item"],
+[data-slot="dropdown-menu-checkbox-item"],
+[data-slot="dropdown-menu-radio-item"],
+[data-slot="dropdown-menu-sub-trigger"],
+[data-slot="context-menu-item"],
+[data-slot="context-menu-checkbox-item"],
+[data-slot="context-menu-radio-item"],
+[data-slot="context-menu-sub-trigger"],
+[data-slot="sidebar-trigger"],
+[data-slot="sidebar-group-action"],
+[data-slot="sidebar-menu-button"],
+[data-slot="sidebar-menu-action"],
+[data-slot="sidebar-menu-sub-button"],
+a[data-slot="item"],
+a[class^="hover:bg-"],
+a[class*=" hover:bg-"],
+a[class^="hover:underline"],
+a[class*=" hover:underline"],
+a[class^="hover:text-"],
+a[class*=" hover:text-"],
+button[class^="hover:bg-"],
+button[class*=" hover:bg-"],
+button[class^="hover:underline"],
+button[class*=" hover:underline"],
+button[class^="hover:text-"],
+button[class*=" hover:text-"],
+[role="button"][class^="hover:bg-"],
+[role="button"][class*=" hover:bg-"],
+[role="button"][class^="hover:underline"],
+[role="button"][class*=" hover:underline"],
+[role="button"][class^="hover:text-"],
+[role="button"][class*=" hover:text-"] {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease,
+    box-shadow 180ms ease,
+    text-decoration-color 180ms ease;
+}
+
+/* 共享 hover 仅作用于“未声明局部 hover 语义”的控件。
+   显式使用 hover:bg-* / hover:text-* 的按钮保留组件自身语义。 */
+.ui-button[data-variant="ghost"]:not(:disabled):not([class*=" hover:bg-"]):not([class*=" hover:text-"]):hover,
+.ui-button[data-variant="outline"]:not(:disabled):not([class*=" hover:bg-"]):not([class*=" hover:text-"]):hover,
+.ui-toggle:not(:disabled):not([data-state="on"]):hover,
+[data-slot="pagination-link"]:not([data-active="true"]):hover,
+[data-slot="select-trigger"]:not([data-disabled]):hover,
+[data-slot="tabs-trigger"]:not([data-state="active"]):hover,
+[data-slot="menubar-trigger"]:not([data-state="open"]):hover,
+[data-slot="navigation-menu-trigger"]:not([data-state="open"]):hover,
+[data-slot="navigation-menu-link"]:not([data-active="true"]):hover,
+.viewer-header-nav-button:not([data-active="true"]):hover,
+.admin-header-nav-button:not([data-active="true"]):hover,
+.theme-toggle-option:not([data-selected="true"]):hover,
+a[data-slot="item"]:hover,
+a[class^="hover:bg-accent"]:hover,
+a[class*=" hover:bg-accent"]:hover,
+button[class^="hover:bg-accent"]:hover,
+button[class*=" hover:bg-accent"]:hover,
+[role="button"][class^="hover:bg-accent"]:hover,
+[role="button"][class*=" hover:bg-accent"]:hover {
+  background-color: var(--interactive-hover-bg);
+  color: var(--interactive-hover-fg);
+  border-color: var(--interactive-hover-border);
+}
+
+[data-slot="tabs-trigger"]:not([data-state="active"]):hover,
+[data-slot="menubar-trigger"]:not([data-state="open"]):hover,
+[data-slot="navigation-menu-trigger"]:not([data-state="open"]):hover,
+[data-slot="navigation-menu-link"]:not([data-active="true"]):hover,
+.viewer-header-nav-button:not([data-active="true"]):hover,
+.admin-header-nav-button:not([data-active="true"]):hover,
+.theme-toggle-option:not([data-selected="true"]):hover,
+.theme-toggle-option[data-highlighted]:not([data-selected="true"]),
+.theme-toggle-option:focus-visible:not([data-selected="true"]) {
+  box-shadow: inset 0 0 0 1px var(--interactive-hover-border);
+}
+
+.ui-button[data-variant="ghost"][data-active="true"],
+.ui-button[data-variant="ghost"][aria-current="page"],
+.ui-button[data-variant="outline"][data-active="true"],
+.ui-button[data-variant="outline"][aria-current="page"],
+.ui-toggle[data-state="on"],
+[data-slot="pagination-link"][data-active="true"],
+[data-slot="tabs-trigger"][data-state="active"],
+[data-slot="menubar-trigger"][data-state="open"],
+[data-slot="menubar-sub-trigger"][data-state="open"],
+[data-slot="navigation-menu-trigger"][data-state="open"],
+[data-slot="navigation-menu-link"][data-active="true"],
+[data-slot="dropdown-menu-sub-trigger"][data-state="open"],
+[data-slot="context-menu-sub-trigger"][data-state="open"],
+.viewer-header-nav-button[data-active="true"],
+.admin-header-nav-button[data-active="true"],
+.theme-toggle-option[data-selected="true"],
+a[class*=" bg-accent"][class*=" text-accent-foreground"],
+button[class*=" bg-accent"][class*=" text-accent-foreground"],
+[role="button"][class*=" bg-accent"][class*=" text-accent-foreground"],
+a[class^="bg-accent"][class*=" text-accent-foreground"],
+button[class^="bg-accent"][class*=" text-accent-foreground"],
+[role="button"][class^="bg-accent"][class*=" text-accent-foreground"],
+a[class*=" bg-accent"][class^="text-accent-foreground"],
+button[class*=" bg-accent"][class^="text-accent-foreground"],
+[role="button"][class*=" bg-accent"][class^="text-accent-foreground"],
+a[class^="bg-accent"][class^="text-accent-foreground"],
+button[class^="bg-accent"][class^="text-accent-foreground"],
+[role="button"][class^="bg-accent"][class^="text-accent-foreground"] {
+  background-color: var(--interactive-active-bg);
+  color: var(--interactive-active-fg);
+  border-color: var(--interactive-active-border);
+}
+
+[data-slot="pagination-link"][data-active="true"],
+[data-slot="tabs-trigger"][data-state="active"],
+[data-slot="menubar-trigger"][data-state="open"],
+[data-slot="menubar-sub-trigger"][data-state="open"],
+[data-slot="navigation-menu-trigger"][data-state="open"],
+[data-slot="navigation-menu-link"][data-active="true"],
+[data-slot="dropdown-menu-sub-trigger"][data-state="open"],
+[data-slot="context-menu-sub-trigger"][data-state="open"],
+.viewer-header-nav-button[data-active="true"],
+.admin-header-nav-button[data-active="true"],
+.theme-toggle-option[data-selected="true"] {
+  box-shadow: inset 0 0 0 1px var(--interactive-active-border);
+}
+
+.ui-button[data-variant="ghost"][data-active="true"]:hover,
+.ui-button[data-variant="ghost"][aria-current="page"]:hover,
+.ui-button[data-variant="outline"][data-active="true"]:hover,
+.ui-button[data-variant="outline"][aria-current="page"]:hover,
+.ui-toggle[data-state="on"]:hover,
+[data-slot="pagination-link"][data-active="true"]:hover,
+[data-slot="tabs-trigger"][data-state="active"]:hover,
+[data-slot="menubar-trigger"][data-state="open"]:hover,
+[data-slot="menubar-sub-trigger"][data-state="open"]:hover,
+[data-slot="navigation-menu-trigger"][data-state="open"]:hover,
+[data-slot="navigation-menu-link"][data-active="true"]:hover,
+[data-slot="dropdown-menu-sub-trigger"][data-state="open"]:hover,
+[data-slot="context-menu-sub-trigger"][data-state="open"]:hover,
+.viewer-header-nav-button[data-active="true"]:hover,
+.admin-header-nav-button[data-active="true"]:hover,
+.theme-toggle-option[data-selected="true"]:hover,
+a[class*=" bg-accent"][class*=" text-accent-foreground"]:hover,
+button[class*=" bg-accent"][class*=" text-accent-foreground"]:hover,
+[role="button"][class*=" bg-accent"][class*=" text-accent-foreground"]:hover,
+a[class^="bg-accent"][class*=" text-accent-foreground"]:hover,
+button[class^="bg-accent"][class*=" text-accent-foreground"]:hover,
+[role="button"][class^="bg-accent"][class*=" text-accent-foreground"]:hover,
+a[class*=" bg-accent"][class^="text-accent-foreground"]:hover,
+button[class*=" bg-accent"][class^="text-accent-foreground"]:hover,
+[role="button"][class*=" bg-accent"][class^="text-accent-foreground"]:hover,
+a[class^="bg-accent"][class^="text-accent-foreground"]:hover,
+button[class^="bg-accent"][class^="text-accent-foreground"]:hover,
+[role="button"][class^="bg-accent"][class^="text-accent-foreground"]:hover {
+  background-color: var(--interactive-active-hover-bg);
+  color: var(--interactive-active-fg);
+}
+
+[data-slot="sidebar-trigger"]:hover,
+[data-slot="sidebar-group-action"]:hover,
+[data-slot="sidebar-menu-action"]:hover,
+[data-slot="sidebar-menu-button"]:not([data-active="true"]):not([data-state="open"]):hover,
+[data-slot="sidebar-menu-sub-button"]:not([data-active="true"]):hover {
+  background-color: var(--sidebar-interactive-hover-bg);
+  color: var(--sidebar-interactive-hover-fg);
+}
+
+[data-slot="sidebar-menu-button"][data-active="true"],
+[data-slot="sidebar-menu-button"][data-state="open"],
+[data-slot="sidebar-menu-sub-button"][data-active="true"] {
+  background-color: var(--sidebar-interactive-active-bg);
+  color: var(--sidebar-interactive-active-fg);
+}
+
+[data-slot="sidebar-menu-button"][data-active="true"]:hover,
+[data-slot="sidebar-menu-button"][data-state="open"]:hover,
+[data-slot="sidebar-menu-sub-button"][data-active="true"]:hover {
+  background-color: var(--sidebar-interactive-active-hover-bg);
+  color: var(--sidebar-interactive-active-fg);
+}
+
+[data-slot="menubar-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="menubar-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="menubar-checkbox-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="menubar-checkbox-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="menubar-radio-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="menubar-radio-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="menubar-sub-trigger"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="menubar-sub-trigger"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="dropdown-menu-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="dropdown-menu-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="dropdown-menu-checkbox-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="dropdown-menu-checkbox-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="dropdown-menu-radio-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="dropdown-menu-radio-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="dropdown-menu-sub-trigger"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="dropdown-menu-sub-trigger"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="context-menu-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="context-menu-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="context-menu-checkbox-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="context-menu-checkbox-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="context-menu-radio-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="context-menu-radio-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="context-menu-sub-trigger"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="context-menu-sub-trigger"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible,
+[data-slot="select-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"])[data-highlighted],
+[data-slot="select-item"]:not([data-variant="destructive"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):focus-visible {
+  background-color: var(--interactive-hover-bg);
+  color: var(--interactive-hover-fg);
+}
+
+.ui-button[data-variant="link"],
+.interactive-text-link,
+a[class^="hover:underline"],
+a[class*=" hover:underline"],
+button[class^="hover:underline"],
+button[class*=" hover:underline"],
+[role="button"][class^="hover:underline"],
+[role="button"][class*=" hover:underline"] {
+  text-decoration-color: color-mix(in oklch, currentColor 0%, transparent);
+}
+
+.ui-button[data-variant="link"]:not([aria-current="page"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):hover,
+a[class^="hover:underline"]:not([aria-current="page"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):hover,
+a[class*=" hover:underline"]:not([aria-current="page"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):hover,
+button[class^="hover:underline"]:not([aria-current="page"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):hover,
+button[class*=" hover:underline"]:not([aria-current="page"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):hover,
+[role="button"][class^="hover:underline"]:not([aria-current="page"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):hover,
+[role="button"][class*=" hover:underline"]:not([aria-current="page"]):not([data-active="true"]):not([data-selected="true"]):not([data-state="active"]):not([data-state="on"]):not([data-state="open"]):hover {
+  color: var(--interactive-link-hover-fg);
+  text-decoration-color: color-mix(in oklch, currentColor 40%, transparent);
+}
+
+.interactive-text-link:hover {
+  color: var(--interactive-link-hover-fg);
+  text-decoration-color: color-mix(in oklch, currentColor 40%, transparent);
+}
+
+.ui-button[data-variant="link"][aria-current="page"],
+a[aria-current="page"],
+.interactive-text-link[aria-current="page"],
+.interactive-text-link[data-active="true"],
+.interactive-text-link[data-selected="true"],
+.interactive-text-link[data-state="active"],
+.interactive-text-link[data-state="on"],
+.interactive-text-link[data-state="open"] {
+  color: var(--interactive-link-active-fg);
+  opacity: 1;
+  text-decoration-color: color-mix(in oklch, currentColor 50%, transparent);
+}
+
+/* =========================================
+   Graph visual effects
+   ========================================= */
+
+/* VERIFIED 节点发光：仅作用于节点 path，避免文字被连带滤镜污染。 */
+@keyframes verified-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px var(--graph-node-halo-color, var(--color-graph-verified-glow))); }
+  50%      { filter: drop-shadow(0 0 10px var(--graph-node-halo-color, var(--color-graph-verified-glow))); }
+}
+
+.graph-node-verified > path {
+  animation: verified-pulse 2.5s ease-in-out infinite;
+}
+
+/* diancang theme: stronger glow */
+[data-theme="diancang"] .graph-node-verified > path {
+  animation: verified-pulse-strong 2s ease-in-out infinite;
+}
+
+@keyframes verified-pulse-strong {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--graph-node-halo-color, var(--color-graph-verified-glow))) drop-shadow(0 0 12px var(--graph-node-halo-color, var(--color-graph-verified-glow))); }
+  50%      { filter: drop-shadow(0 0 14px var(--graph-node-halo-color, var(--color-graph-verified-glow))) drop-shadow(0 0 24px var(--graph-node-halo-color, var(--color-graph-verified-glow))); }
+}
+
+/* =========================================
+   Page transition fade
+   ========================================= */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-page-enter {
+  animation: page-enter 300ms ease-out forwards;
+}
+
+/* =========================================
+   Graph loading: book opening transition
+   ========================================= */
+@keyframes graph-book-halo {
+  0%, 100% { opacity: 0.28; transform: scale(0.94); }
+  50%      { opacity: 0.52; transform: scale(1.03); }
+}
+
+@keyframes graph-book-shadow {
+  0%, 100% { opacity: 0.56; transform: translateX(-50%) scaleX(0.92); }
+  50%      { opacity: 0.82; transform: translateX(-50%) scaleX(1.03); }
+}
+
+@keyframes graph-book-cover-left-open {
+  0%   { transform: translateX(-98%) rotateY(0deg); }
+  65%  { transform: translateX(-98%) rotateY(-82deg); }
+  100% { transform: translateX(-98%) rotateY(-72deg); }
+}
+
+@keyframes graph-book-cover-right-open {
+  0%   { transform: translateX(-2%) rotateY(0deg); }
+  65%  { transform: translateX(-2%) rotateY(82deg); }
+  100% { transform: translateX(-2%) rotateY(72deg); }
+}
+
+@keyframes graph-book-pages-glow {
+  0%   { opacity: 0.56; transform: translateX(-50%) scaleY(0.96); }
+  45%  { opacity: 0.95; transform: translateX(-50%) scaleY(1.02); }
+  100% { opacity: 0.88; transform: translateX(-50%) scaleY(1); }
+}
+
+@keyframes graph-book-lines-shift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 22px; }
+}
+
+@keyframes graph-loading-dot {
+  0%, 80%, 100% { opacity: 0.32; transform: translateY(0); }
+  40%           { opacity: 1; transform: translateY(-3px); }
+}
+
+.graph-loading-center::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 26% at 50% 56%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 70%),
+    radial-gradient(62% 40% at 50% 65%, color-mix(in srgb, var(--card) 58%, transparent), transparent 72%);
+}
+
+.graph-loading-book-stage {
+  transform-style: preserve-3d;
+}
+
+.graph-loading-book-halo {
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 24%, transparent) 0%, transparent 72%);
+  animation: graph-book-halo 1400ms ease-in-out infinite;
+}
+
+.graph-loading-book-shadow {
+  animation: graph-book-shadow 1400ms ease-in-out infinite;
+}
+
+.graph-loading-book-pages {
+  animation: graph-book-pages-glow 920ms ease-out both;
+}
+
+.graph-loading-book-pages-lines {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--foreground) 15%, transparent) 0,
+      color-mix(in srgb, var(--foreground) 15%, transparent) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+  animation: graph-book-lines-shift 1800ms linear infinite;
+}
+
+.graph-loading-book-cover-left {
+  backface-visibility: hidden;
+  animation: graph-book-cover-left-open 920ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.graph-loading-book-cover-right {
+  backface-visibility: hidden;
+  animation: graph-book-cover-right-open 920ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.graph-loading-book-dots span {
+  animation: graph-loading-dot 1050ms ease-in-out infinite;
+}
+
+.graph-loading-book-dots span:nth-child(2) {
+  animation-delay: 130ms;
+}
+
+.graph-loading-book-dots span:nth-child(3) {
+  animation-delay: 260ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .graph-loading-book-halo,
+  .graph-loading-book-shadow,
+  .graph-loading-book-pages,
+  .graph-loading-book-pages-lines,
+  .graph-loading-book-cover-left,
+  .graph-loading-book-cover-right,
+  .graph-loading-book-dots span {
+    animation: none !important;
+  }
+
+  .graph-loading-book-cover-left {
+    transform: translateX(-98%) rotateY(-66deg);
+  }
+
+  .graph-loading-book-cover-right {
+    transform: translateX(-2%) rotateY(66deg);
+  }
+}
+
+/* =========================================
+   Glassmorphism utility
+   ========================================= */
+.glass {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* =========================================
+   Scrollbar styling
+   ========================================= */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 3px;
+}
+
+/* =========================================
+   古典装饰工具类
+   ========================================= */
+@layer utilities {
+  /* 古典装饰边框 */
+  .border-classical {
+    border-image: linear-gradient(
+      to right,
+      transparent,
+      var(--color-border) 15%,
+      var(--color-border) 85%,
+      transparent
+    ) 1;
+  }
+
+  /* 书卷纹理 */
+  .texture-paper {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  /* 图谱节点光晕 */
+  .glow-node {
+    box-shadow: 0 0 20px var(--graph-node);
+  }
+
+  /* 文本平衡 */
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* =========================================
+   图谱视图（人物关系图谱页）
+   -----------------------------------------
+   颜色一律走主题令牌，不硬编码，使四个主题下观感一致。
+   ========================================= */
+@layer components {
+  .graph-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .graph-view-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklab, var(--color-card) 92%, transparent);
+  }
+
+  .graph-view-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .graph-view-stat strong {
+    color: var(--color-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .graph-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .graph-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background-color: transparent;
+    font-size: 0.8125rem;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    transition: opacity 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+
+  .graph-legend-item:hover {
+    border-color: var(--color-ring);
+    color: var(--color-foreground);
+  }
+
+  /* 未激活的分组降低不透明度，而非隐藏 —— 保留图例布局稳定。 */
+  .graph-legend-item[data-active="false"] {
+    opacity: 0.45;
+  }
+
+  .graph-legend-swatch {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .graph-legend-count {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+  }
+
+  .graph-view-notice {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-muted-foreground);
+  }
+
+  /* 画布与详情面板并排；窄屏时堆叠，避免侧栏挤压画布。 */
+  .graph-view-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  @media (max-width: 1024px) {
+    .graph-view-body {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .graph-canvas {
+    position: relative;
+    height: 70vh;
+    min-height: 480px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background-color: var(--color-graph-bg, var(--color-card));
+    /* 主题背景的装饰层是 fixed 定位，此处显式建立 stacking context 以保证画布在上层。 */
+    isolation: isolate;
+  }
+
+  .graph-detail-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklab, var(--color-card) 92%, transparent);
+  }
+
+  .graph-detail-panel[data-empty="true"] {
+    justify-content: center;
+  }
+
+  .graph-detail-hint {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--color-muted-foreground);
+  }
+
+  .graph-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .graph-detail-name {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .graph-detail-meta {
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .graph-detail-close {
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: transparent;
+    color: var(--color-muted-foreground);
+    font-size: 1.125rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .graph-detail-close:hover {
+    color: var(--color-foreground);
+    border-color: var(--color-ring);
+  }
+
+  .graph-detail-relations {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .graph-detail-relation {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: color-mix(in oklab, var(--color-background) 60%, transparent);
+  }
+
+  .graph-detail-relation-head {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+  }
+
+  .graph-detail-swatch {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .graph-detail-type {
+    color: var(--color-foreground);
+  }
+
+  .graph-detail-code {
+    color: var(--color-muted-foreground);
+  }
+
+  .graph-detail-counterpart {
+    align-self: flex-start;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+    transition: text-decoration-color 160ms ease;
+  }
+
+  .graph-detail-counterpart:hover {
+    text-decoration-color: currentColor;
+  }
+
+  .graph-detail-range {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .graph-detail-quote {
+    margin: 0;
+    padding-left: 0.625rem;
+    border-left: 2px solid var(--color-border);
+    font-family: var(--font-serif, inherit);
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    color: var(--color-muted-foreground);
+  }
+}
+
+/* =========================================
+   书库列表
+   ========================================= */
+@layer components {
+  .work-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .work-list-item {
+    min-width: 0;
+  }
+
+  .work-list-link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    height: 100%;
+    padding: 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklab, var(--color-card) 92%, transparent);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 160ms ease, transform 160ms ease;
+  }
+
+  .work-list-link:hover {
+    border-color: var(--color-ring);
+    transform: translateY(-2px);
+  }
+
+  .work-list-title {
+    margin: 0;
+    font-family: var(--font-serif, inherit);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .work-list-meta {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .work-list-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-muted-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .work-list-stats [data-status="ready"] {
+    color: var(--color-primary);
+  }
+
+  .work-list-stats [data-status="failed"] {
+    color: var(--color-destructive);
+  }
+}

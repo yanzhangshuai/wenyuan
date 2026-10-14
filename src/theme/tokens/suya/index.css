@@ -1,0 +1,198 @@
+/* ====================================================================
+   素雅 (Suya) - 暖调浅色
+   ====================================================================
+   设计理念：暖象牙纸背景 + 竹青绿强调色 + 柔和阴影
+   视觉标签：宣纸、竹青、素净、淡墨
+   明暗类型：浅色主题
+   适用场景：长时间阅读、打印友好、日间模式
+   依赖组件：library-ambient（首页氛围背景）
+   维护说明：色值采用 oklch 色彩空间，与 sheji 参考项目严格对齐
+   ==================================================================== */
+[data-theme="suya"] {
+  /* --- 基础色阶 --- */
+  /* 主背景：暖象牙纸色 */
+  --background: oklch(0.97 0.01 90);
+  /* 前景：深褐墨色文字 */
+  --foreground: oklch(0.25 0.02 45);
+  /* 卡片：接近纯白，纸张质感 */
+  --card: oklch(0.99 0.005 90);
+  --card-foreground: oklch(0.25 0.02 45);
+  /* 弹窗：微暖白 */
+  --popover: oklch(0.98 0.008 90);
+  --popover-foreground: oklch(0.25 0.02 45);
+
+  /* --- 语义色 --- */
+  /* 主色：竹青绿——取自竹林与青瓷的色调 */
+  --primary: oklch(0.45 0.10 160);
+  --primary-foreground: oklch(0.98 0.01 90);
+  /* 次要：浅灰暖色 */
+  --secondary: oklch(0.94 0.015 90);
+  --secondary-foreground: oklch(0.30 0.02 45);
+  /* 静音：柔灰，用于辅助文字和禁用态 */
+  --muted: oklch(0.93 0.01 85);
+  --muted-foreground: oklch(0.50 0.02 60);
+  /* 强调：与主色相同的竹青绿 */
+  --accent: oklch(0.45 0.10 160);
+  --accent-foreground: oklch(0.98 0.01 90);
+  /* 危险/删除操作 */
+  --destructive: oklch(0.55 0.18 25);
+  --destructive-foreground: oklch(0.98 0.01 90);
+
+  /* --- 边界与交互 --- */
+  /* 边框：暖灰色柔和线条 */
+  --border: oklch(0.88 0.015 85);
+  /* 输入框底色：浅暖灰 */
+  --input: oklch(0.95 0.01 90);
+  /* 聚焦环：竹青绿 */
+  --ring: oklch(0.45 0.10 160);
+  --radius: 0.375rem;
+  /* 主色透明背景（bg-primary-subtle） */
+  --primary-subtle: oklch(0.45 0.10 160 / 0.10);
+  /* 交互层级：hover 保持纸面轻染，active 再更明确一些。 */
+  --interactive-hover-bg: oklch(0.45 0.10 160 / 0.10);
+  --interactive-hover-fg: oklch(0.25 0.02 45);
+  --interactive-hover-border: oklch(0.45 0.10 160 / 0.18);
+  --interactive-active-bg: oklch(0.45 0.10 160 / 0.18);
+  --interactive-active-fg: oklch(0.22 0.02 45);
+  --interactive-active-border: oklch(0.45 0.10 160 / 0.26);
+  --interactive-active-hover-bg: oklch(0.45 0.10 160 / 0.24);
+  --interactive-link-hover-fg: oklch(0.45 0.10 160 / 0.86);
+  --interactive-link-active-fg: oklch(0.45 0.10 160);
+
+  /* --- 图谱专用色 --- */
+  /* 节点主色：竹青 / 辅色：暖绿 */
+  --graph-node: oklch(0.45 0.10 160);
+  --graph-node-secondary: oklch(0.55 0.08 120);
+  /* 边线：淡褐灰 */
+  --graph-edge: oklch(0.60 0.05 90);
+  /* 高亮：朱砂暖红（与浅色背景形成对比） */
+  --graph-highlight: oklch(0.55 0.15 25);
+  /* 节点 hover：沿用竹青主色系，浅色背景下保持清晰边界。 */
+  --graph-node-hover: oklch(0.42 0.11 165);
+
+  /* --- 侧边栏 --- */
+  --sidebar: oklch(0.96 0.01 88);
+  --sidebar-foreground: oklch(0.25 0.02 45);
+  --sidebar-primary: oklch(0.45 0.10 160);
+  --sidebar-primary-foreground: oklch(0.98 0.01 90);
+  --sidebar-accent: oklch(0.93 0.012 88);
+  --sidebar-accent-foreground: oklch(0.25 0.02 45);
+  --sidebar-border: oklch(0.88 0.015 85);
+  --sidebar-ring: oklch(0.45 0.10 160);
+
+  /* --- 图表色板 --- */
+  --chart-1: oklch(0.45 0.10 160);
+  --chart-2: oklch(0.55 0.12 120);
+  --chart-3: oklch(0.55 0.08 85);
+  --chart-4: oklch(0.50 0.15 25);
+  --chart-5: oklch(0.60 0.10 200);
+
+  /* --- wen-yuan 扩展：图谱细分色 --- */
+  --color-graph-bg: oklch(0.95 0.008 90);
+  --color-graph-edge-positive: oklch(0.50 0.08 230);
+  --color-graph-edge-negative: oklch(0.55 0.15 25);
+  --color-graph-draft: oklch(0.60 0.04 70 / 0.5);
+  --color-graph-verified-glow: oklch(0.50 0.10 160 / 0.35);
+  --color-graph-focus-dim: oklch(0.25 0.02 45 / 0.12);
+
+  /* --- wen-yuan 扩展：书架装饰色 --- */
+  --color-shelf-surface: oklch(0.88 0.012 85);
+  --color-shelf-edge: oklch(0.84 0.01 85);
+
+  /* --- wen-yuan 扩展：书籍封面无图占位色 --- */
+  --book-cover-faction-0: #5E7452;
+  --book-cover-faction-1: #5A82A8;
+  --book-cover-faction-2: #4A8C5C;
+  --book-cover-faction-3: #B89840;
+  --book-cover-faction-4: #8B7DA0;
+  --book-cover-faction-5: #A06758;
+  --book-cover-faction-6: #4A8898;
+  --book-cover-faction-7: #A06868;
+  --book-cover-faction-8: #607080;
+  --book-cover-faction-9: #808070;
+  --book-cover-faction-10: #C45040;
+  --book-cover-faction-11: #4A7A62;
+
+  /* 装饰性元素开关：0=浅色主题默认关闭纹理装饰 */
+  --decorative-enabled: 0;
+  font-family: var(--font-serif);
+}
+
+/* --- 首页氛围背景 ---
+   浅色主题无需额外渐变，纯色即可营造干净素雅感 */
+
+[data-theme='suya'] .library-ambient {
+  background-color: var(--background);
+}
+
+/* --- 书库卡片主题化（素雅）---
+   采用浅纸面层次和柔和阴影，保证与浅色阅读场景统一。 */
+[data-theme='suya'] .library-book-card-surface {
+  background-color: oklch(0.99 0.006 90 / 0.94);
+  border-color: oklch(0.88 0.015 85 / 0.80);
+  box-shadow: 0 10px 22px oklch(0.76 0.018 90 / 0.20);
+}
+
+[data-theme='suya'] .library-book-card:hover .library-book-card-surface {
+  border-color: oklch(0.45 0.10 160 / 0.38);
+  box-shadow: 0 16px 28px oklch(0.72 0.02 90 / 0.24);
+}
+
+[data-theme='suya'] .library-book-card-hover {
+  background-color: oklch(0.99 0.006 90 / 0.92);
+}
+
+[data-theme='suya'] .library-book-card-status [data-slot='badge'] {
+  border-color: oklch(0.86 0.015 85 / 0.82);
+  background-color: oklch(0.99 0.006 90 / 0.82);
+}
+
+/* --- 登录页背景与右侧表单可读性 ---
+   素雅主题维持明亮纸面感，同时用轻边界区分左右区域和表单层。 */
+[data-theme='suya'] .login-layout {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--background);
+  background-image:
+    radial-gradient(680px circle at 15% 18%, oklch(0.55 0.10 150 / 0.08) 0%, transparent 70%),
+    radial-gradient(540px circle at 82% 86%, oklch(0.45 0.10 160 / 0.06) 0%, transparent 66%);
+}
+
+[data-theme='suya'] .login-left {
+  position: relative;
+  z-index: 1;
+  background-color: oklch(0.99 0.006 90 / 0.66);
+  border-right: 1px solid oklch(0.88 0.015 85 / 0.70);
+}
+
+[data-theme='suya'] .login-right {
+  position: relative;
+  z-index: 1;
+  background-color: transparent;
+}
+
+[data-theme='suya'] .login-auth-shell {
+  position: relative;
+  z-index: 1;
+  border: 1px solid oklch(0.88 0.015 85 / 0.78);
+  background-color: oklch(0.99 0.005 90 / 0.86);
+  box-shadow: 0 16px 30px oklch(0.78 0.02 92 / 0.26);
+}
+
+[data-theme='suya'] .login-auth-shell [data-slot='tabs-list'] {
+  border: 1px solid oklch(0.87 0.015 85 / 0.68);
+  background-color: oklch(0.97 0.008 90 / 0.88);
+}
+
+[data-theme='suya'] .login-auth-shell [data-slot='tabs-trigger'][data-state='active'] {
+  background-color: oklch(0.45 0.10 160 / 0.18);
+}
+
+[data-theme='suya'] .login-auth-shell [data-slot='input'] {
+  border-color: oklch(0.87 0.015 85 / 0.74);
+  background-color: oklch(0.99 0.005 90 / 0.92);
+}
+
+[data-theme='suya'] .login-auth-shell .login-divider-pill {
+  background-color: oklch(0.99 0.005 90 / 0.92);
+}
