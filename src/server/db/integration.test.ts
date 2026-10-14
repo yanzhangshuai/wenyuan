@@ -88,6 +88,7 @@ const EXPECTED_TABLES = [
   "analysis_calls",
   "analysis_issues",
   "analysis_runs",
+  "books",
   "chapters",
   "entities",
   "entity_aliases",
@@ -95,15 +96,14 @@ const EXPECTED_TABLES = [
   "evidence_spans",
   "paragraphs",
   "relation_types",
-  "relationships",
-  "works"
+  "relationships"
 ];
 
 let pglite: PGlite;
 let stopServer: (() => Promise<void>) | null = null;
 
 /** 落库后的作品 ID，供后续断言共享。 */
-let workId = "";
+let bookId = "";
 
 beforeAll(async () => {
   pglite = new PGlite();
@@ -149,11 +149,11 @@ describe("迁移", () => {
     expect(result.rows.map((row) => row.tablename)).toEqual(EXPECTED_TABLES);
   });
 
-  it("枚举类型已创建（work_status 含 parsing/ready）", async () => {
+  it("枚举类型已创建（book_status 含 parsing/ready）", async () => {
     const result = await pglite.query<{ enumlabel: string }>(
       `select e.enumlabel from pg_enum e
        join pg_type t on t.oid = e.enumtypid
-       where t.typname = 'work_status'
+       where t.typname = 'book_status'
        order by e.enumsortorder`
     );
     expect(result.rows.map((row) => row.enumlabel)).toEqual([
@@ -167,45 +167,45 @@ describe("迁移", () => {
 
 describe("导入作品", () => {
   it("章节与段落落库，作品状态置为 ready", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
 
-    const summary = await importWork("儒林外史", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-    workId = summary.workId;
+    const summary = await importBook("儒林外史", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    bookId = summary.bookId;
 
     expect(summary.chapterCount).toBe(3);
     expect(summary.oversizedChapters).toEqual([]);
 
-    const works = await pglite.query<{ status: string; chapter_count: number }>(
-      "select status, chapter_count from works where id = $1",
-      [workId]
+    const books = await pglite.query<{ status: string; chapter_count: number }>(
+      "select status, chapter_count from books where id = $1",
+      [bookId]
     );
-    expect(works.rows[0]?.status).toBe("ready");
-    expect(works.rows[0]?.chapter_count).toBe(3);
+    expect(books.rows[0]?.status).toBe("ready");
+    expect(books.rows[0]?.chapter_count).toBe(3);
 
     const paragraphs = await pglite.query<{ n: number }>(
       `select count(*)::int as n from paragraphs p
        join chapters c on c.id = p.chapter_id
-       where c.work_id = $1`,
-      [workId]
+       where c.book_id = $1`,
+      [bookId]
     );
     expect(paragraphs.rows[0]?.n).toBe(summary.paragraphCount);
     expect(paragraphs.rows[0]?.n).toBeGreaterThan(0);
   });
 
   it("重复导入同一标题为整体替换，不产生重复作品", async () => {
-    const { importWork, findWorkIdByTitle } = await import("@/server/modules/importing/persist");
+    const { importBook, findBookIdByTitle } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
 
-    const second = await importWork("儒林外史", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-    workId = second.workId;
+    const second = await importBook("儒林外史", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    bookId = second.bookId;
 
     const count = await pglite.query<{ n: number }>(
-      "select count(*)::int as n from works where title = $1",
+      "select count(*)::int as n from books where title = $1",
       ["儒林外史"]
     );
     expect(count.rows[0]?.n).toBe(1);
-    expect(await findWorkIdByTitle("儒林外史")).toBe(workId);
+    expect(await findBookIdByTitle("儒林外史")).toBe(bookId);
   });
 });
 
@@ -242,11 +242,11 @@ describe("图谱落库与读回", () => {
       normalizeName(entity.canonical),
       ...entity.memberKeys
     ]);
-    const mentionIndex = await buildMentionIndex(workId, keys);
+    const mentionIndex = await buildMentionIndex(bookId, keys);
 
     const summary = await persistGraph(
       {
-        workId,
+        bookId,
         runId           : "00000000-0000-0000-0000-000000000001",
         entities        : merged.entities,
         keyToEntityIndex: merged.keyToEntityIndex,
@@ -301,15 +301,15 @@ describe("图谱落库与读回", () => {
     const evidence = await pglite.query<{ n: number }>(
       `select count(*)::int as n from evidence_spans es
        join relationships r on r.id = es.relationship_id
-       where r.work_id = $1`,
-      [workId]
+       where r.book_id = $1`,
+      [bookId]
     );
     expect(evidence.rows[0]?.n).toBe(3);
 
     // 读回快照：这是页面真正消费的数据结构。
-    const snapshot = await loadGraphSnapshot(workId);
+    const snapshot = await loadGraphSnapshot(bookId);
     expect(snapshot).not.toBeNull();
-    expect(snapshot?.workTitle).toBe("儒林外史");
+    expect(snapshot?.bookTitle).toBe("儒林外史");
     expect(snapshot?.nodes).toHaveLength(6);
     expect(snapshot?.edges).toHaveLength(3);
     expect(snapshot?.legend.length).toBeGreaterThan(0);
@@ -328,11 +328,11 @@ describe("图谱落库与读回", () => {
   it("未登记的关系码被外键拒绝（提示必须先执行 db:seed）", async () => {
     await expect(
       pglite.query(
-        `insert into relationships (work_id, source_entity_id, target_entity_id, relation_type_code, start_chapter)
-         select $1, (select id from entities where work_id = $1 limit 1),
-                    (select id from entities where work_id = $1 offset 1 limit 1),
+        `insert into relationships (book_id, source_entity_id, target_entity_id, relation_type_code, start_chapter)
+         select $1, (select id from entities where book_id = $1 limit 1),
+                    (select id from entities where book_id = $1 offset 1 limit 1),
                     '不存在的关系码', 1`,
-        [workId]
+        [bookId]
       )
     ).rejects.toThrow(/foreign key|violates/i);
   });
@@ -345,8 +345,8 @@ describe("提及的作用域与关系去重口径（缺陷 N1 / N16）", () => {
     // 按**归一化键三元组**分组。于是「键不同、实体相同」的两条关系
     // 在 P6 看来是两条、在库里是同一条 → 第二条被 onConflictDoNothing 静默吞掉。
     const pair = await pglite.query<{ id: string }>(
-      "select id from entities where work_id = $1 order by canonical limit 2",
-      [workId]
+      "select id from entities where book_id = $1 order by canonical limit 2",
+      [bookId]
     );
     const [source, target] = pair.rows;
     expect(source).toBeDefined();
@@ -355,9 +355,9 @@ describe("提及的作用域与关系去重口径（缺陷 N1 / N16）", () => {
     const insert = () =>
       pglite.query(
         `insert into relationships
-           (work_id, source_entity_id, target_entity_id, relation_type_code, start_chapter)
+           (book_id, source_entity_id, target_entity_id, relation_type_code, start_chapter)
          values ($1, $2, $3, '朋友', 1)`,
-        [workId, source?.id, target?.id]
+        [bookId, source?.id, target?.id]
       );
 
     await insert();
@@ -395,7 +395,7 @@ describe("提及的作用域与关系去重口径（缺陷 N1 / N16）", () => {
       normalizeName(entity.canonical),
       ...entity.memberKeys
     ]);
-    const mentionIndex = await buildMentionIndex(workId, keys);
+    const mentionIndex = await buildMentionIndex(bookId, keys);
 
     // 先证明**索引本身是全库的**（并带章节序号）：别名命中的段落跨了 1、2 两回。
     const aliasHits = mentionIndex.get(normalizeName("学生")) ?? [];
@@ -403,7 +403,7 @@ describe("提及的作用域与关系去重口径（缺陷 N1 / N16）", () => {
 
     const summary = await persistGraph(
       {
-        workId,
+        bookId,
         runId           : "00000000-0000-0000-0000-000000000002",
         entities        : merged.entities,
         keyToEntityIndex: merged.keyToEntityIndex,
@@ -421,8 +421,8 @@ describe("提及的作用域与关系去重口径（缺陷 N1 / N16）", () => {
       `select distinct c.ordinal from entity_mentions m
        join paragraphs p on p.id = m.paragraph_id
        join chapters c on c.id = p.chapter_id
-       where m.entity_id = (select id from entities where work_id = $1)`,
-      [workId]
+       where m.entity_id = (select id from entities where book_id = $1)`,
+      [bookId]
     );
     expect(rows.rows.map((row) => row.ordinal)).toEqual([1]);
   });
@@ -466,7 +466,7 @@ describe("提及的作用域与关系去重口径（缺陷 N1 / N16）", () => {
       normalizeName(entity.canonical),
       ...entity.memberKeys
     ]);
-    const mentionIndex = await buildMentionIndex(workId, keys);
+    const mentionIndex = await buildMentionIndex(bookId, keys);
 
     // 独立算「应该丢几次」：**去重后**每个键的越界命中数之和。
     const observed = new Set([2]);
@@ -481,7 +481,7 @@ describe("提及的作用域与关系去重口径（缺陷 N1 / N16）", () => {
 
     const summary = await persistGraph(
       {
-        workId,
+        bookId,
         runId           : "00000000-0000-0000-0000-000000000003",
         entities        : merged.entities,
         keyToEntityIndex: merged.keyToEntityIndex,
@@ -515,11 +515,11 @@ describe("提及的作用域与关系去重口径（缺陷 N1 / N16）", () => {
       normalizeName(entity.canonical),
       ...entity.memberKeys
     ]);
-    const mentionIndex = await buildMentionIndex(workId, keys);
+    const mentionIndex = await buildMentionIndex(bookId, keys);
 
     const summary = await persistGraph(
       {
-        workId,
+        bookId,
         runId           : "00000000-0000-0000-0000-000000000003",
         entities        : merged.entities,
         keyToEntityIndex: merged.keyToEntityIndex,
@@ -534,9 +534,9 @@ describe("提及的作用域与关系去重口径（缺陷 N1 / N16）", () => {
       `select distinct c.ordinal from entity_mentions m
        join paragraphs p on p.id = m.paragraph_id
        join chapters c on c.id = p.chapter_id
-       where m.entity_id = (select id from entities where work_id = $1)
+       where m.entity_id = (select id from entities where book_id = $1)
        order by c.ordinal`,
-      [workId]
+      [bookId]
     );
     expect(ordinals.rows.map((row) => row.ordinal)).toEqual([1, 2]);
   });

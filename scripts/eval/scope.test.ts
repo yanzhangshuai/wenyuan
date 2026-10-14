@@ -110,7 +110,7 @@ describe("isPrecisionReadable —— 精确率何时不可读", () => {
 
 describe("runEval —— 切片是否真的接上了（接线回归护栏）", () => {
   const gold: GoldSet = {
-    workTitle      : "儒林外史",
+    bookTitle      : "儒林外史",
     chapterRange   : [1, 3],
     annotationNotes: [],
     entities       : [
@@ -129,7 +129,7 @@ describe("runEval —— 切片是否真的接上了（接线回归护栏）", (
       [["朋友", "秦老", "王冕", 1]]
     );
     const loaded: LoadedGraph = {
-      workId           : "w",
+      bookId           : "w",
       inScopeCanonicals: new Set(["王冕", "秦老"]),
       graph            : full
     };

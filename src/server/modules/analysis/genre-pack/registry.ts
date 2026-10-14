@@ -71,7 +71,7 @@ interface WorkPackRegistration {
  * ⚠️ 刻意**不做**繁简转换：转换表是另一份需要维护的知识，
  * 且简繁混用本身会让分词结果不同 —— 与其静默转换，不如让匹配失败并留档。
  */
-export function normalizeWorkTitle(raw: string): string {
+export function normalizeBookTitle(raw: string): string {
   return raw
     .replace(/\.(txt|text|md)$/i, "")
     .replace(/[《》〈〉「」『』【】〔〕（）()[\]]/gu, "")
@@ -89,7 +89,7 @@ const REGISTRATIONS: readonly WorkPackRegistration[] = [
   .map((registration) => ({
     ...registration,
     aliases: [...registration.aliases]
-      .map((alias) => normalizeWorkTitle(alias))
+      .map((alias) => normalizeBookTitle(alias))
       .sort((left, right) => right.length - left.length)
   }))
   .sort((left, right) => (right.aliases[0]?.length ?? 0) - (left.aliases[0]?.length ?? 0));
@@ -166,11 +166,11 @@ export interface WorkPackResolution {
  *    长别名优先，避免「红楼梦」抢走本该由更长别名命中的标题；
  * 3. 全部未命中 → `UNREGISTERED_WORK_PACK`，`matched = false`。
  *
- * @param workTitle 作品标题（来自 `works.title`）；空串视为未注册
+ * @param bookTitle 作品标题（来自 `books.title`）；空串视为未注册
  * @returns 作品包 + 匹配状态
  */
-export function resolveWorkPack(workTitle: string): WorkPackResolution {
-  const normalized = normalizeWorkTitle(workTitle);
+export function resolveWorkPack(bookTitle: string): WorkPackResolution {
+  const normalized = normalizeBookTitle(bookTitle);
   if (normalized.length === 0) {
     return { pack: UNREGISTERED_WORK_PACK, matched: false, matchedAlias: null };
   }

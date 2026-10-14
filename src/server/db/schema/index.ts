@@ -8,4 +8,4 @@ export * from "./analysis";
 export * from "./entities";
 export * from "./enums";
 export * from "./relations";
-export * from "./works";
+export * from "./books";

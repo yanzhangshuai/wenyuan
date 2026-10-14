@@ -4,7 +4,7 @@ import { Suspense, use } from "react";
 
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
 import { EmptyBooks, SkeletonCard } from "@/components/ui/states";
-import { listWorks, type WorkListItem } from "@/server/modules/works/list-works";
+import { listBooks, type BookListItem } from "@/server/modules/books/list-books";
 
 /**
  * 书库首页。
@@ -14,7 +14,7 @@ import { listWorks, type WorkListItem } from "@/server/modules/works/list-works"
  */
 
 /** 作品状态的中文标签。 */
-const STATUS_LABELS: Readonly<Record<WorkListItem["status"], string>> = {
+const STATUS_LABELS: Readonly<Record<BookListItem["status"], string>> = {
   pending: "待解析",
   parsing: "解析中",
   ready  : "已就绪",
@@ -22,7 +22,7 @@ const STATUS_LABELS: Readonly<Record<WorkListItem["status"], string>> = {
 };
 
 export default function LibraryPage() {
-  const worksPromise = listWorks();
+  const booksPromise = listBooks();
 
   return (
     <PageContainer>
@@ -31,14 +31,14 @@ export default function LibraryPage() {
         description="导入一部小说，自动解析人物与关系，生成可交互的人物关系图谱。"
       />
       <Suspense fallback={<LibrarySkeleton />}>
-        <WorkList worksPromise={worksPromise} />
+        <BookList booksPromise={booksPromise} />
       </Suspense>
     </PageContainer>
   );
 }
 
-interface WorkListProps {
-  worksPromise: ReturnType<typeof listWorks>;
+interface BookListProps {
+  booksPromise: ReturnType<typeof listBooks>;
 }
 
 /**
@@ -47,26 +47,26 @@ interface WorkListProps {
  * @param props 由页面创建的取数 Promise
  * @returns 作品卡片列表；无数据时展示空态
  */
-function WorkList({ worksPromise }: WorkListProps) {
-  const items = use(worksPromise);
+function BookList({ booksPromise }: BookListProps) {
+  const items = use(booksPromise);
 
   if (items.length === 0) {
     return <EmptyBooks />;
   }
 
   return (
-    <ul className="work-list">
-      {items.map((work) => (
-        <li key={work.id} className="work-list-item">
-          <Link href={`/works/${work.id}`} className="work-list-link">
-            <h2 className="work-list-title">{work.title}</h2>
-            <p className="work-list-meta">
-              {work.author ?? "佚名"} · {work.chapterCount} 章
+    <ul className="book-list">
+      {items.map((book) => (
+        <li key={book.id} className="book-list-item">
+          <Link href={`/book/${book.id}`} className="book-list-link">
+            <h2 className="book-list-title">{book.title}</h2>
+            <p className="book-list-meta">
+              {book.author ?? "佚名"} · {book.chapterCount} 章
             </p>
-            <p className="work-list-stats">
-              <span>{work.entityCount} 个实体</span>
-              <span>{work.relationCount} 条关系</span>
-              <span data-status={work.status}>{STATUS_LABELS[work.status]}</span>
+            <p className="book-list-stats">
+              <span>{book.entityCount} 个实体</span>
+              <span>{book.relationCount} 条关系</span>
+              <span data-status={book.status}>{STATUS_LABELS[book.status]}</span>
             </p>
           </Link>
         </li>
@@ -78,7 +78,7 @@ function WorkList({ worksPromise }: WorkListProps) {
 /** 列表骨架屏。 */
 function LibrarySkeleton() {
   return (
-    <div className="work-list">
+    <div className="book-list">
       {Array.from({ length: 3 }, (_, index) => (
         <SkeletonCard key={index} />
       ))}

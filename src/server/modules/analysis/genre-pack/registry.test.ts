@@ -5,30 +5,30 @@ import {
   assertWorkPackIsValid,
   findPrefixConflicts,
   listRegisteredWorkPacks,
-  normalizeWorkTitle,
+  normalizeBookTitle,
   resolveWorkPack
 } from "./index";
 
-describe("normalizeWorkTitle", () => {
+describe("normalizeBookTitle", () => {
   it("剔除书名号与空白", () => {
-    expect(normalizeWorkTitle("《红楼梦》")).toBe("红楼梦");
-    expect(normalizeWorkTitle("  儒林外史  ")).toBe("儒林外史");
-    expect(normalizeWorkTitle("儒林外史\u3000")).toBe("儒林外史");
+    expect(normalizeBookTitle("《红楼梦》")).toBe("红楼梦");
+    expect(normalizeBookTitle("  儒林外史  ")).toBe("儒林外史");
+    expect(normalizeBookTitle("儒林外史\u3000")).toBe("儒林外史");
   });
 
   it("剔除文件后缀", () => {
-    expect(normalizeWorkTitle("红楼梦.txt")).toBe("红楼梦");
-    expect(normalizeWorkTitle("红楼梦.TXT")).toBe("红楼梦");
+    expect(normalizeBookTitle("红楼梦.txt")).toBe("红楼梦");
+    expect(normalizeBookTitle("红楼梦.TXT")).toBe("红楼梦");
   });
 
   it("剔除下划线与括号后仍保留汉字", () => {
-    expect(normalizeWorkTitle("红楼梦_前10回")).toBe("红楼梦前10回");
-    expect(normalizeWorkTitle("红楼梦（前10回）")).toBe("红楼梦前10回");
+    expect(normalizeBookTitle("红楼梦_前10回")).toBe("红楼梦前10回");
+    expect(normalizeBookTitle("红楼梦（前10回）")).toBe("红楼梦前10回");
   });
 
   it("⚠️ 不做繁简转换 —— 繁简混用应保持原样，让匹配失败并留档", () => {
     // 转换表是另一份需要维护的知识；静默转换会把「匹配失败」变成「看起来成功」。
-    expect(normalizeWorkTitle("紅樓夢")).toBe("紅樓夢");
+    expect(normalizeBookTitle("紅樓夢")).toBe("紅樓夢");
   });
 });
 

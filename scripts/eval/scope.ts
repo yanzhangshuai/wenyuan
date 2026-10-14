@@ -185,7 +185,7 @@ export function renderAnnotationNotes(notes: readonly string[]): string[] {
  * 后 54 回的每个实体都被算成 FP → 精确率 0.85%、F1 1.69%（约等于 11/938）。
  */
 export interface LoadedGraph {
-  workId           : string;
+  bookId           : string;
   graph            : EvalGraph;
   /** 金标章节区间内**被提及过**的实体规范名（`entity_mentions` → 段落 → 章节）。 */
   inScopeCanonicals: Set<string>;

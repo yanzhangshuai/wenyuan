@@ -12,7 +12,7 @@ import {
   evidenceSpans,
   paragraphs,
   relationships,
-  works
+  books
 } from "@/server/db/schema";
 
 import type { MergedEntity } from "./merge";
@@ -67,7 +67,7 @@ export interface PersistableRelation {
 
 /** 落库输入。 */
 export interface PersistGraphInput {
-  workId          : string;
+  bookId          : string;
   runId           : string;
   entities        : readonly MergedEntity[];
   relations       : readonly PersistableRelation[];
@@ -128,7 +128,7 @@ export async function persistGraph(
 
   await db.transaction(async (tx) => {
     // 整体替换：删除旧图谱（关系与提及随外键级联删除）。
-    await tx.delete(entitiesTable).where(eq(entitiesTable.workId, input.workId));
+    await tx.delete(entitiesTable).where(eq(entitiesTable.bookId, input.bookId));
 
     /** 实体下标 → 数据库 ID。 */
     const indexToEntityId = new Map<number, string>();
@@ -137,7 +137,7 @@ export async function persistGraph(
       const [inserted] = await tx
         .insert(entitiesTable)
         .values({
-          workId        : input.workId,
+          bookId        : input.bookId,
           canonical     : entity.canonical,
           normalizedName: normalizeName(entity.canonical),
           type          : entity.type,
@@ -163,7 +163,7 @@ export async function persistGraph(
         await tx
           .insert(entityAliases)
           .values({
-            workId  : input.workId,
+            bookId  : input.bookId,
             entityId: inserted.id,
             alias,
             normalizedAlias
@@ -240,7 +240,7 @@ export async function persistGraph(
       const [insertedRelation] = await tx
         .insert(relationships)
         .values({
-          workId          : input.workId,
+          bookId          : input.bookId,
           sourceEntityId  : sourceId,
           targetEntityId  : targetId,
           relationTypeCode: relation.typeCode,
@@ -278,7 +278,7 @@ export async function persistGraph(
       }
     }
 
-    await tx.update(works).set({ updatedAt: new Date() }).where(eq(works.id, input.workId));
+    await tx.update(books).set({ updatedAt: new Date() }).where(eq(books.id, input.bookId));
   });
 
   return {
@@ -295,7 +295,7 @@ export async function persistGraph(
 /**
  * 构建提及索引：遍历全部段落，找出每个归一化键在哪些段落中出现。
  *
- * @param workId 作品 ID
+ * @param bookId 作品 ID
  * @param keys 需要检索的归一化键集合
  * @returns 归一化键 → 段落命中列表（每项带该段落所属的章节序号）
  *
@@ -310,7 +310,7 @@ export async function persistGraph(
  * 而「这个段落属于哪一回」只有这里（已 join `chapters`）知道。
  */
 export async function buildMentionIndex(
-  workId: string,
+  bookId: string,
   keys: readonly string[]
 ): Promise<MentionIndex> {
   const db = getDatabase();
@@ -318,7 +318,7 @@ export async function buildMentionIndex(
     .select({ id: paragraphs.id, text: paragraphs.text, chapterOrdinal: chapters.ordinal })
     .from(paragraphs)
     .innerJoin(chapters, eq(paragraphs.chapterId, chapters.id))
-    .where(eq(chapters.workId, workId));
+    .where(eq(chapters.bookId, bookId));
 
   const index = new Map<string, MentionHit[]>();
   for (const row of rows) {

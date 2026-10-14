@@ -1,9 +1,9 @@
 import { integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
-import { workStatusEnum } from "./enums";
+import { bookStatusEnum } from "./enums";
 
 /**
- * 作品域表：`works` / `chapters` / `paragraphs`。
+ * 作品域表：`books` / `chapters` / `paragraphs`。
  *
  * 层级关系：一部作品含多章，一章含多段。
  * `paragraphs` 是全系统的**证据定位锚点** —— 所有实体提及与关系证据都落到段落坐标，
@@ -11,11 +11,11 @@ import { workStatusEnum } from "./enums";
  */
 
 /** 作品。 */
-export const works = pgTable("works", {
+export const books = pgTable("books", {
   id          : uuid("id").primaryKey().defaultRandom(),
   title       : text("title").notNull(),
   author      : text("author"),
-  status      : workStatusEnum("status").notNull().default("pending"),
+  status      : bookStatusEnum("status").notNull().default("pending"),
   chapterCount: integer("chapter_count").notNull().default(0),
   createdAt   : timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt   : timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
@@ -26,9 +26,9 @@ export const chapters = pgTable(
   "chapters",
   {
     id    : uuid("id").primaryKey().defaultRandom(),
-    workId: uuid("work_id")
+    bookId: uuid("book_id")
       .notNull()
-      .references(() => works.id, { onDelete: "cascade" }),
+      .references(() => books.id, { onDelete: "cascade" }),
     ordinal  : integer("ordinal").notNull(),
     title    : text("title").notNull(),
     rawText  : text("raw_text").notNull(),
@@ -37,7 +37,7 @@ export const chapters = pgTable(
   },
   (t) => [
     // 唯一索引同时承担「按作品列章」的查询职责，无需再建普通索引。
-    uniqueIndex("chapters_work_ordinal_uq").on(t.workId, t.ordinal)
+    uniqueIndex("chapters_book_ordinal_uq").on(t.bookId, t.ordinal)
   ]
 );
 

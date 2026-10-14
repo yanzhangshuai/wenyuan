@@ -9,16 +9,16 @@ import {
   varchar
 } from "drizzle-orm/pg-core";
 
+import { paragraphs, books } from "./books";
 import { entities } from "./entities";
 import { relationDirectionEnum, relationStatusEnum } from "./enums";
-import { paragraphs, works } from "./works";
 
 /**
  * 关系域表：`relation_types` / `relationships` / `evidence_spans`。
  *
  * 关键设计：
- * - `relationships` 即**邻接表**，配合 `(work_id, source_entity_id)` 与
- *   `(work_id, target_entity_id)` 两个索引支撑递归 CTE 路径查询（无需 Neo4j）；
+ * - `relationships` 即**邻接表**，配合 `(book_id, source_entity_id)` 与
+ *   `(book_id, target_entity_id)` 两个索引支撑递归 CTE 路径查询（无需 Neo4j）；
  * - 关系带有效期 `start_chapter` / `end_chapter`（未结束为 null），
  *   由 P6 的 `aggregateRelationship()` 维护 INSERT / EXTEND / CLOSE 语义。
  */
@@ -40,9 +40,9 @@ export const relationships = pgTable(
   "relationships",
   {
     id    : uuid("id").primaryKey().defaultRandom(),
-    workId: uuid("work_id")
+    bookId: uuid("book_id")
       .notNull()
-      .references(() => works.id, { onDelete: "cascade" }),
+      .references(() => books.id, { onDelete: "cascade" }),
     sourceEntityId: uuid("source_entity_id")
       .notNull()
       .references(() => entities.id, { onDelete: "cascade" }),
@@ -62,14 +62,14 @@ export const relationships = pgTable(
   (t) => [
     // 同一作品内，同一 (源, 目标, 类型) 只允许一条记录，有效期通过章节字段扩展。
     uniqueIndex("relationships_triple_uq").on(
-      t.workId,
+      t.bookId,
       t.sourceEntityId,
       t.targetEntityId,
       t.relationTypeCode
     ),
     // 双向索引：无向遍历时以 UNION 合并两个方向。
-    index("relationships_source_idx").on(t.workId, t.sourceEntityId),
-    index("relationships_target_idx").on(t.workId, t.targetEntityId)
+    index("relationships_source_idx").on(t.bookId, t.sourceEntityId),
+    index("relationships_target_idx").on(t.bookId, t.targetEntityId)
   ]
 );
 

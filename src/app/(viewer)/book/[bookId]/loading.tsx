@@ -8,7 +8,7 @@ import { GraphSkeleton } from "@/components/ui/states";
  * 应由 `loading.tsx` 承担，而不是在页面里用 `useState` 造全屏 spinner。
  * 骨架屏复用页面本身的容器与页头结构，避免加载完成时布局跳动。
  */
-export default function WorkGraphLoading() {
+export default function BookGraphLoading() {
   return (
     <PageContainer fullWidth>
       <PageHeader

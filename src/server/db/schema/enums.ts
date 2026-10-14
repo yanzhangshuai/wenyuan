@@ -13,7 +13,7 @@ import { ENTITY_TYPES } from "@/lib/entities";
  */
 
 /** 作品解析状态。 */
-export const workStatusEnum = pgEnum("work_status", ["pending", "parsing", "ready", "failed"]);
+export const bookStatusEnum = pgEnum("book_status", ["pending", "parsing", "ready", "failed"]);
 
 /** 实体类型：取值来源见 `@/lib/entities`，与 v1 goldset 完全一致。 */
 export const entityTypeEnum = pgEnum("entity_type", ENTITY_TYPES);

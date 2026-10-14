@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { getDatabase } from "@/server/db/client";
-import { chapters, paragraphs, works } from "@/server/db/schema";
+import { chapters, paragraphs, books } from "@/server/db/schema";
 
 import type { ParsedChapter } from "./parse-text";
 
@@ -16,8 +16,8 @@ import type { ParsedChapter } from "./parse-text";
  */
 
 /** 导入结果摘要。 */
-export interface ImportedWorkSummary {
-  workId           : string;
+export interface ImportedBookSummary {
+  bookId           : string;
   title            : string;
   chapterCount     : number;
   paragraphCount   : number;
@@ -49,39 +49,39 @@ async function insertInBatches<T>(
  *
  * 幂等性：以 `title` 为口径先删除同名作品（级联删除章节与段落），再重新写入。
  */
-export async function importWork(
+export async function importBook(
   title: string,
   author: string | null,
   parsedChapters: readonly ParsedChapter[]
-): Promise<ImportedWorkSummary> {
+): Promise<ImportedBookSummary> {
   const db = getDatabase();
   const totalChars = parsedChapters.reduce((sum, chapter) => sum + chapter.text.length, 0);
-  let workId = "";
+  let bookId = "";
 
   await db.transaction(async (tx) => {
     // 同名作品整体替换：段落坐标不可变，只能重建。
-    await tx.delete(works).where(eq(works.title, title));
+    await tx.delete(books).where(eq(books.title, title));
 
-    const [work] = await tx
-      .insert(works)
+    const [book] = await tx
+      .insert(books)
       .values({
         title,
         author,
         status      : "parsing",
         chapterCount: parsedChapters.length
       })
-      .returning({ id: works.id });
+      .returning({ id: books.id });
 
-    if (work === undefined) {
+    if (book === undefined) {
       throw new Error(`作品写入失败：${title}`);
     }
-    workId = work.id;
+    bookId = book.id;
 
     for (const chapter of parsedChapters) {
       const [insertedChapter] = await tx
         .insert(chapters)
         .values({
-          workId   : work.id,
+          bookId   : book.id,
           ordinal  : chapter.ordinal,
           title    : chapter.title,
           rawText  : chapter.text,
@@ -114,11 +114,11 @@ export async function importWork(
       });
     }
 
-    await tx.update(works).set({ status: "ready" }).where(eq(works.id, work.id));
+    await tx.update(books).set({ status: "ready" }).where(eq(books.id, book.id));
   });
 
   return {
-    workId,
+    bookId,
     title,
     chapterCount     : parsedChapters.length,
     paragraphCount   : parsedChapters.reduce((sum, chapter) => sum + chapter.paragraphs.length, 0),
@@ -135,12 +135,12 @@ export async function importWork(
  * @param title 作品标题
  * @returns 作品 ID；不存在时返回 null
  */
-export async function findWorkIdByTitle(title: string): Promise<string | null> {
+export async function findBookIdByTitle(title: string): Promise<string | null> {
   const db = getDatabase();
   const rows = await db
-    .select({ id: works.id })
-    .from(works)
-    .where(eq(works.title, title))
+    .select({ id: books.id })
+    .from(books)
+    .where(eq(books.title, title))
     .limit(1);
   return rows[0]?.id ?? null;
 }

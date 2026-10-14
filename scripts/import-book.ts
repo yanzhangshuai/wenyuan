@@ -3,7 +3,7 @@ import { basename, resolve } from "node:path";
 
 import { normalizeEncoding, stripStructuralNoise } from "@/server/modules/importing/canonicalize";
 import { parseChapters } from "@/server/modules/importing/parse-text";
-import { importWork } from "@/server/modules/importing/persist";
+import { importBook } from "@/server/modules/importing/persist";
 
 /**
  * 书籍导入脚本。
@@ -92,10 +92,10 @@ async function main(): Promise<void> {
     throw new Error(`未能从 ${absolutePath} 中解析出任何内容`);
   }
 
-  const summary = await importWork(title, options.author, parsedChapters);
+  const summary = await importBook(title, options.author, parsedChapters);
 
   console.log(`[import] 作品《${summary.title}》导入完成`);
-  console.log(`  workId      : ${summary.workId}`);
+  console.log(`  bookId      : ${summary.bookId}`);
   console.log(`  章节数      : ${summary.chapterCount}`);
   console.log(`  段落数      : ${summary.paragraphCount}`);
   console.log(`  总字数      : ${summary.totalChars}`);

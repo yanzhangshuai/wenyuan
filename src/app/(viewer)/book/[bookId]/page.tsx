@@ -19,15 +19,15 @@ import { loadGraphSnapshot } from "@/server/modules/graph/read-graph";
  * 拆出 Promise + Suspense 后，页头与骨架屏可以先到达浏览器。
  */
 
-interface WorkGraphPageProps {
-  params: Promise<{ workId: string }>;
+interface BookGraphPageProps {
+  params: Promise<{ bookId: string }>;
 }
 
-export default async function WorkGraphPage({ params }: WorkGraphPageProps) {
-  const { workId } = await params;
+export default async function BookGraphPage({ params }: BookGraphPageProps) {
+  const { bookId } = await params;
 
   // Promise 在此创建、在 GraphSection 内消费 —— 服务端组件不会重渲染，因此不会重复请求。
-  const snapshotPromise = loadGraphSnapshot(workId);
+  const snapshotPromise = loadGraphSnapshot(bookId);
 
   return (
     <PageContainer fullWidth>

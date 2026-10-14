@@ -15,7 +15,7 @@ import { toErrorMessage } from "@/lib/errors";
  *   避免把堆栈或英文技术信息直接抛给用户；
  * - 只在控制台留档，不在边界内吞掉错误。
  */
-export default function WorkGraphError({
+export default function BookGraphError({
   error,
   reset
 }: {

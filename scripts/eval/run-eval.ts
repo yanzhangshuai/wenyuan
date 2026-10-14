@@ -11,7 +11,7 @@ import {
   entityMentions,
   paragraphs,
   relationships,
-  works
+  books
 } from "@/server/db/schema";
 
 import { GoldSetSchema } from "./goldset-schema";
@@ -45,17 +45,17 @@ async function loadGraphByTitle(
   chapterRange: readonly [number, number]
 ): Promise<LoadedGraph> {
   const db = getDatabase();
-  const rows = await db.select({ id: works.id }).from(works).where(eq(works.title, title)).limit(1);
-  const workId = rows[0]?.id;
-  if (workId === undefined) {
+  const rows = await db.select({ id: books.id }).from(books).where(eq(books.title, title)).limit(1);
+  const bookId = rows[0]?.id;
+  if (bookId === undefined) {
     throw new Error(`未找到标题为《${title}》的作品，请先导入并解析`);
   }
-  return loadGraph(workId, chapterRange);
+  return loadGraph(bookId, chapterRange);
 }
 
 /** 按作品 ID 读取图谱。 */
 async function loadGraph(
-  workId: string,
+  bookId: string,
   chapterRange: readonly [number, number]
 ): Promise<LoadedGraph> {
   const db = getDatabase();
@@ -63,12 +63,12 @@ async function loadGraph(
   const entityRows = await db
     .select({ id: entitiesTable.id, canonical: entitiesTable.canonical })
     .from(entitiesTable)
-    .where(eq(entitiesTable.workId, workId));
+    .where(eq(entitiesTable.bookId, bookId));
 
   const aliasRows = await db
     .select({ entityId: entityAliases.entityId, alias: entityAliases.alias })
     .from(entityAliases)
-    .where(eq(entityAliases.workId, workId));
+    .where(eq(entityAliases.bookId, bookId));
 
   const aliasByEntity = new Map<string, string[]>();
   for (const row of aliasRows) {
@@ -87,7 +87,7 @@ async function loadGraph(
       startChapter: relationships.startChapter
     })
     .from(relationships)
-    .where(eq(relationships.workId, workId));
+    .where(eq(relationships.bookId, bookId));
 
   const nameById = new Map(entityRows.map((row) => [row.id, row.canonical]));
 
@@ -101,14 +101,14 @@ async function loadGraph(
     .innerJoin(entitiesTable, eq(entitiesTable.id, entityMentions.entityId))
     .where(
       and(
-        eq(chapters.workId, workId),
+        eq(chapters.bookId, bookId),
         gte(chapters.ordinal, from),
         lte(chapters.ordinal, to)
       )
     );
 
   return {
-    workId,
+    bookId,
     inScopeCanonicals: new Set(scopeRows.map((row) => row.canonical)),
     graph            : {
       entities: entityRows.map((row) => ({
@@ -135,12 +135,12 @@ async function loadGraph(
 }
 
 /** 读取作品的全部章节标题 —— 仅用于把金标区间解析成人可核对的章节列表。 */
-async function loadChapterRefs(workId: string): Promise<ChapterRef[]> {
+async function loadChapterRefs(bookId: string): Promise<ChapterRef[]> {
   const db = getDatabase();
   return db
     .select({ ordinal: chapters.ordinal, title: chapters.title })
     .from(chapters)
-    .where(eq(chapters.workId, workId))
+    .where(eq(chapters.bookId, bookId))
     .orderBy(chapters.ordinal);
 }
 
@@ -184,27 +184,27 @@ async function main(): Promise<void> {
   const raw = await readFile(resolve(goldPath), "utf8");
   const gold = GoldSetSchema.parse(JSON.parse(raw) as unknown);
 
-  const workIdIndex = argv.indexOf("--work-id");
-  const explicitWorkId = workIdIndex >= 0 ? argv[workIdIndex + 1] : undefined;
+  const bookIdIndex = argv.indexOf("--work-id");
+  const explicitBookId = bookIdIndex >= 0 ? argv[bookIdIndex + 1] : undefined;
 
   const loaded =
-    explicitWorkId === undefined
-      ? await loadGraphByTitle(gold.workTitle, gold.chapterRange)
-      : await loadGraph(explicitWorkId, gold.chapterRange);
+    explicitBookId === undefined
+      ? await loadGraphByTitle(gold.bookTitle, gold.chapterRange)
+      : await loadGraph(explicitBookId, gold.chapterRange);
 
   // **关键**：`runEval` 内部会按金标的章节区间切片。不切片就会拿全书图谱
   // 去对章节金标，区间外的一切都被算成 FP —— 那正是初版 0.85% 精确率的来源。
   const { report, slice } = runEval(gold, loaded);
 
-  console.log(`金标作品：《${gold.workTitle}》 章节 ${String(gold.chapterRange[0])}–${String(gold.chapterRange[1])}`);
-  console.log(`比对图谱：${loaded.workId}`);
+  console.log(`金标作品：《${gold.bookTitle}》 章节 ${String(gold.chapterRange[0])}–${String(gold.chapterRange[1])}`);
+  console.log(`比对图谱：${loaded.bookId}`);
 
   // 把区间解析到的**章节标题**逐条打出来。这不是装饰 —— `chapterRange` 的单位
   // 曾经未定义，而 `chapters.ordinal` 又被前置内容占用了 1，于是「第 1–3 回」
   // 静默变成了「前言 + 第一回 + 第二回」。这类口径错误看 PRF 数字永远发现不了，
   // 只能把中间量摊开。
   const rangeSummary = describeChapterRange(
-    await loadChapterRefs(loaded.workId),
+    await loadChapterRefs(loaded.bookId),
     gold.chapterRange[0],
     gold.chapterRange[1]
   );

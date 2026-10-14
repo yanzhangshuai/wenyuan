@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { cache } from "react";
 
 import { getDatabase } from "@/server/db/client";
-import { entities, relationships, works } from "@/server/db/schema";
+import { entities, relationships, books } from "@/server/db/schema";
 
 /**
  * 作品列表查询（服务端）。
@@ -19,7 +19,7 @@ import { entities, relationships, works } from "@/server/db/schema";
  */
 
 /** 书库列表项。 */
-export interface WorkListItem {
+export interface BookListItem {
   id           : string;
   title        : string;
   author       : string | null;
@@ -35,7 +35,7 @@ export interface WorkListItem {
  *
  * @returns 按创建时间倒序排列的作品列表
  */
-export const listWorks = cache(async (): Promise<WorkListItem[]> => {
+export const listBooks = cache(async (): Promise<BookListItem[]> => {
   // 显式声明运行时边界，阻止构建期预渲染执行数据库查询。
   await connection();
 
@@ -44,26 +44,26 @@ export const listWorks = cache(async (): Promise<WorkListItem[]> => {
   const entityCount = db
     .select({ count: sql<number>`count(*)::int` })
     .from(entities)
-    .where(eq(entities.workId, works.id));
+    .where(eq(entities.bookId, books.id));
 
   const relationCount = db
     .select({ count: sql<number>`count(*)::int` })
     .from(relationships)
-    .where(eq(relationships.workId, works.id));
+    .where(eq(relationships.bookId, books.id));
 
   const rows = await db
     .select({
-      id           : works.id,
-      title        : works.title,
-      author       : works.author,
-      status       : works.status,
-      chapterCount : works.chapterCount,
-      createdAt    : works.createdAt,
+      id           : books.id,
+      title        : books.title,
+      author       : books.author,
+      status       : books.status,
+      chapterCount : books.chapterCount,
+      createdAt    : books.createdAt,
       entityCount  : sql<number>`(${entityCount})`,
       relationCount: sql<number>`(${relationCount})`
     })
-    .from(works)
-    .orderBy(desc(works.createdAt));
+    .from(books)
+    .orderBy(desc(books.createdAt));
 
   return rows;
 });

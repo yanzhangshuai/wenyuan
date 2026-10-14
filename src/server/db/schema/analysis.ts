@@ -1,7 +1,7 @@
 import { index, integer, jsonb, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
+import { books } from "./books";
 import { analysisRunStatusEnum, analysisStageEnum } from "./enums";
-import { works } from "./works";
 
 /**
  * 解析审计域表：`analysis_runs` / `analysis_calls` / `analysis_issues`。
@@ -35,9 +35,9 @@ export interface SkillSnapshotEntry {
 /** 解析运行（一次「导入 → 图谱」的完整执行）。 */
 export const analysisRuns = pgTable("analysis_runs", {
   id    : uuid("id").primaryKey().defaultRandom(),
-  workId: uuid("work_id")
+  bookId: uuid("book_id")
     .notNull()
-    .references(() => works.id, { onDelete: "cascade" }),
+    .references(() => books.id, { onDelete: "cascade" }),
   status       : analysisRunStatusEnum("status").notNull().default("running"),
   /** 冻结的模型配置。 */
   modelSnapshot: jsonb("model_snapshot").$type<ModelSnapshot>().notNull(),

@@ -1,7 +1,7 @@
 import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
+import { paragraphs, books } from "./books";
 import { entityTypeEnum, nameTypeEnum } from "./enums";
-import { paragraphs, works } from "./works";
 
 /**
  * 实体域表：`entities` / `entity_aliases` / `entity_mentions`。
@@ -17,9 +17,9 @@ export const entities = pgTable(
   "entities",
   {
     id    : uuid("id").primaryKey().defaultRandom(),
-    workId: uuid("work_id")
+    bookId: uuid("book_id")
       .notNull()
-      .references(() => works.id, { onDelete: "cascade" }),
+      .references(() => books.id, { onDelete: "cascade" }),
     canonical     : text("canonical").notNull(),
     /** `normalizeName(canonical)` 的结果，唯一约束的实际载体。 */
     normalizedName: text("normalized_name").notNull(),
@@ -30,8 +30,8 @@ export const entities = pgTable(
     createdAt     : timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
   (t) => [
-    uniqueIndex("entities_work_normname_uq").on(t.workId, t.normalizedName),
-    index("entities_work_type_idx").on(t.workId, t.type)
+    uniqueIndex("entities_book_normname_uq").on(t.bookId, t.normalizedName),
+    index("entities_book_type_idx").on(t.bookId, t.type)
   ]
 );
 
@@ -40,9 +40,9 @@ export const entityAliases = pgTable(
   "entity_aliases",
   {
     id    : uuid("id").primaryKey().defaultRandom(),
-    workId: uuid("work_id")
+    bookId: uuid("book_id")
       .notNull()
-      .references(() => works.id, { onDelete: "cascade" }),
+      .references(() => books.id, { onDelete: "cascade" }),
     entityId: uuid("entity_id")
       .notNull()
       .references(() => entities.id, { onDelete: "cascade" }),
@@ -51,7 +51,7 @@ export const entityAliases = pgTable(
     normalizedAlias: text("normalized_alias").notNull()
   },
   (t) => [
-    uniqueIndex("entity_aliases_work_nornalias_uq").on(t.workId, t.normalizedAlias),
+    uniqueIndex("entity_aliases_book_nornalias_uq").on(t.bookId, t.normalizedAlias),
     index("entity_aliases_entity_idx").on(t.entityId)
   ]
 );

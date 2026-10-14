@@ -78,7 +78,7 @@ function buildPairKey(sourceKey: string, targetKey: string, symmetric: boolean):
  *
  * 本函数上游的 `aggregateRelations` 按 `buildRelationIdentity(sourceKey, targetKey,
  * typeCode, symmetric)` 分组 —— 对**对称码**它把两端**排序**（无序对）。
- * 而落库唯一索引 `relationships_triple_uq` 建在 **(workId, sourceEntityId,
+ * 而落库唯一索引 `relationships_triple_uq` 建在 **(bookId, sourceEntityId,
  * targetEntityId, relationTypeCode)** 上，是**有向**的。
  *
  * 两个口径在「两个不同的键归并成同一个实体」时不重合（这正是 N16 的成因）。
@@ -267,7 +267,7 @@ export interface CollapseOutcome {
  * 本函数上一步的 `aggregateRelations` 按 **归一化键三元组**
  * （`buildRelationIdentity(sourceKey, targetKey, typeCode, symmetric)`）分组；
  * 而 `persist-graph.ts` 写库时，唯一索引 `relationships_triple_uq` 建在
- * **(workId, sourceEntityId, targetEntityId, relationTypeCode)** 上，用的是**实体 id**。
+ * **(bookId, sourceEntityId, targetEntityId, relationTypeCode)** 上，用的是**实体 id**。
  *
  * 两个口径在「两个不同的键归并成同一个实体」时不重合：
  * 此时两条关系在 P6 看来是两条，在数据库看来是**同一条**，

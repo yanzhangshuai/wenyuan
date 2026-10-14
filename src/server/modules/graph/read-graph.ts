@@ -16,7 +16,7 @@ import {
   entityMentions,
   evidenceSpans,
   relationships,
-  works
+  books
 } from "@/server/db/schema";
 import type { GraphEdge, GraphLegendEntry, GraphNode, GraphSnapshot } from "@/types/graph";
 
@@ -34,26 +34,26 @@ import type { GraphEdge, GraphLegendEntry, GraphNode, GraphSnapshot } from "@/ty
 /**
  * 读取作品图谱快照。
  *
- * @param workId 作品 ID
+ * @param bookId 作品 ID
  * @returns 图谱快照；作品不存在时返回 null
  */
-export const loadGraphSnapshot = cache(async (workId: string): Promise<GraphSnapshot | null> => {
+export const loadGraphSnapshot = cache(async (bookId: string): Promise<GraphSnapshot | null> => {
   // 显式声明运行时边界，阻止构建期预渲染执行数据库查询（详见 `cacheComponents` 模式）。
   await connection();
 
   const db = getDatabase();
 
-  const [work] = await db
+  const [book] = await db
     .select({
-      id          : works.id,
-      title       : works.title,
-      chapterCount: works.chapterCount
+      id          : books.id,
+      title       : books.title,
+      chapterCount: books.chapterCount
     })
-    .from(works)
-    .where(eq(works.id, workId))
+    .from(books)
+    .where(eq(books.id, bookId))
     .limit(1);
 
-  if (work === undefined) {
+  if (book === undefined) {
     return null;
   }
 
@@ -66,7 +66,7 @@ export const loadGraphSnapshot = cache(async (workId: string): Promise<GraphSnap
         factionIndex: entities.factionIndex
       })
       .from(entities)
-      .where(eq(entities.workId, workId)),
+      .where(eq(entities.bookId, bookId)),
 
     db
       .select({
@@ -79,13 +79,13 @@ export const loadGraphSnapshot = cache(async (workId: string): Promise<GraphSnap
         status          : relationships.status
       })
       .from(relationships)
-      .where(eq(relationships.workId, workId)),
+      .where(eq(relationships.bookId, bookId)),
 
     db
       .select({ entityId: entityMentions.entityId })
       .from(entityMentions)
       .innerJoin(entities, eq(entityMentions.entityId, entities.id))
-      .where(eq(entities.workId, workId))
+      .where(eq(entities.bookId, bookId))
   ]);
 
   // 提及数：实体 → 段落出现次数。
@@ -137,9 +137,9 @@ export const loadGraphSnapshot = cache(async (workId: string): Promise<GraphSnap
   }));
 
   return {
-    workId            : work.id,
-    workTitle         : work.title,
-    chapterCount      : work.chapterCount,
+    bookId            : book.id,
+    bookTitle         : book.title,
+    chapterCount      : book.chapterCount,
     nodes,
     edges,
     legend            : buildLegend(edges),

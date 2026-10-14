@@ -37,7 +37,7 @@ import type { GenrePack } from "./types";
  *
  * ## 选择逻辑
  *
- * `registry.ts` 提供 `resolveWorkPack(workTitle)`；未注册作品退回**空词典**并留档，
+ * `registry.ts` 提供 `resolveWorkPack(bookTitle)`；未注册作品退回**空词典**并留档，
  * 不再默认到某一本书上（`DEFAULT_WORK_PACK` 已删除，理由见文件末尾）。
  *
  * 另一个已在搬迁期修掉的隐蔽缺陷：`getSegmenter()` 曾是**进程内单例**
@@ -54,7 +54,7 @@ export {
   UNREGISTERED_WORK_PACK,
   assertWorkPackIsValid,
   listRegisteredWorkPacks,
-  normalizeWorkTitle,
+  normalizeBookTitle,
   resolveWorkPack,
   type WorkPackResolution
 } from "./registry";
@@ -70,6 +70,6 @@ export const DEFAULT_GENRE_PACK: GenrePack = CLASSICAL_GENRE_PACK;
  * 任何一处漏传作品包，都会静默地给另一本书套上《儒林外史》的人名。
  *
  * 取而代之的是两条明确的路径：
- * - 真实解析：`resolveWorkPack(workTitle)`（`registry.ts`），未注册 → 空词典 + 留档；
+ * - 真实解析：`resolveWorkPack(bookTitle)`（`registry.ts`），未注册 → 空词典 + 留档；
  * - 无标题场景：`UNREGISTERED_WORK_PACK`（零专名），而不是「恰好某本书」。
  */

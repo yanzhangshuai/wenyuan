@@ -409,12 +409,12 @@ afterAll(async () => {
 
 describe("runPipeline 端到端（P0 → P6）", () => {
   it("跑通完整管线并落库，返回成本与实体/关系计数", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
 
-    const imported = await importWork("儒林外史集成", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-    const result = await runPipeline({ workId: imported.workId });
+    const imported = await importBook("儒林外史集成", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    const result = await runPipeline({ bookId: imported.bookId });
 
     expect(result.entityCount).toBeGreaterThan(0);
     expect(result.relationCount).toBeGreaterThan(0);
@@ -427,15 +427,15 @@ describe("runPipeline 端到端（P0 → P6）", () => {
   }, 120_000);
 
   it("跨分片投票生效：vote_summary 显示同一关系被多片共同印证", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
     const { eq } = await import("drizzle-orm");
     const { getDatabase } = await import("@/server/db/client");
     const { analysisIssues } = await import("@/server/db/schema");
 
-    const imported = await importWork("儒林外史投票", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-    const result = await runPipeline({ workId: imported.workId });
+    const imported = await importBook("儒林外史投票", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    const result = await runPipeline({ bookId: imported.bookId });
 
     // 前提校验：分片数必须 > 1，否则投票场景根本不成立。
     const extractCalls = extractionPrompts.filter((prompt) => prompt.includes("待抽取文本")).length;
@@ -461,22 +461,22 @@ describe("runPipeline 端到端（P0 → P6）", () => {
   }, 120_000);
 
   it("跨分片观测被合并：同一关系多片观测后仍为单条边", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
     const { eq } = await import("drizzle-orm");
     const { getDatabase } = await import("@/server/db/client");
     const { relationships, entities } = await import("@/server/db/schema");
 
-    const imported = await importWork("儒林外史去重", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-    await runPipeline({ workId: imported.workId });
+    const imported = await importBook("儒林外史去重", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    await runPipeline({ bookId: imported.bookId });
 
     const db = getDatabase();
     const rows = await db
       .select({ sourceName: entities.canonical, typeCode: relationships.relationTypeCode })
       .from(relationships)
       .innerJoin(entities, eq(relationships.sourceEntityId, entities.id))
-      .where(eq(relationships.workId, imported.workId));
+      .where(eq(relationships.bookId, imported.bookId));
 
     expect(rows.length).toBeGreaterThan(0);
 
@@ -486,19 +486,19 @@ describe("runPipeline 端到端（P0 → P6）", () => {
   }, 120_000);
 
   it("证据引用跨片累积：同一关系的多条不同引用被保留", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
 
-    const imported = await importWork("儒林外史证据", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-    await runPipeline({ workId: imported.workId });
+    const imported = await importBook("儒林外史证据", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    await runPipeline({ bookId: imported.bookId });
 
     const evidence = await pglite.query<{ n: number }>(
       `select count(*)::int as n from evidence_spans es
        join relationships r on r.id = es.relationship_id
-       where r.work_id = $1
+       where r.book_id = $1
        group by es.relationship_id`,
-      [imported.workId]
+      [imported.bookId]
     );
     expect(evidence.rows.length).toBeGreaterThan(0);
     // 多片各给出不同的真实引用 → 累积 ≥2 条。
@@ -507,21 +507,21 @@ describe("runPipeline 端到端（P0 → P6）", () => {
   }, 120_000);
 
   it("P0 的类型声明进入 P5：某书院被判为 ORGANIZATION 而非退回 PERSON", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
     const { eq } = await import("drizzle-orm");
     const { getDatabase } = await import("@/server/db/client");
     const { entities } = await import("@/server/db/schema");
 
-    const imported = await importWork("儒林外史类型", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-    await runPipeline({ workId: imported.workId });
+    const imported = await importBook("儒林外史类型", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    await runPipeline({ bookId: imported.bookId });
 
     const db = getDatabase();
     const rows = await db
       .select({ canonical: entities.canonical, type: entities.type })
       .from(entities)
-      .where(eq(entities.workId, imported.workId));
+      .where(eq(entities.bookId, imported.bookId));
 
     // 修复前：类型只由分片提取决定（脚本把它标成 PERSON）→ 这里会是 PERSON。
     // 修复后：P0 的 ORGANIZATION 声明优先。
@@ -535,21 +535,21 @@ describe("runPipeline 端到端（P0 → P6）", () => {
   }, 120_000);
 
   it("实体准入闸门：泛称不进图谱，称谓人物降为 TITLE_ONLY", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
     const { eq } = await import("drizzle-orm");
     const { getDatabase } = await import("@/server/db/client");
     const { analysisIssues, entities, entityAliases } = await import("@/server/db/schema");
 
-    const imported = await importWork("儒林外史闸门", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-    const result = await runPipeline({ workId: imported.workId });
+    const imported = await importBook("儒林外史闸门", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    const result = await runPipeline({ bookId: imported.bookId });
 
     const db = getDatabase();
     const rows = await db
       .select({ canonical: entities.canonical, nameType: entities.nameType })
       .from(entities)
-      .where(eq(entities.workId, imported.workId));
+      .where(eq(entities.bookId, imported.bookId));
 
     // ① 单字泛称「县」：正文「汶上县」使它能通过 P2 grounding，
     //    只有闸门拦得住 —— 这条断言同时证明闸门**确实接在管线里**，
@@ -598,12 +598,12 @@ describe("runPipeline 端到端（P0 → P6）", () => {
     const aliasRows = await db
       .select({ alias: entityAliases.alias })
       .from(entityAliases)
-      .where(eq(entityAliases.workId, imported.workId));
+      .where(eq(entityAliases.bookId, imported.bookId));
     expect(aliasRows.map((row) => row.alias)).not.toContain("范老爷");
   }, 120_000);
 
   it("P5 冲突别名：既要切断错并，也要把**名字**留在 merge_summary 里", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
     const { eq } = await import("drizzle-orm");
@@ -613,8 +613,8 @@ describe("runPipeline 端到端（P0 → P6）", () => {
     // 让 P1 把别名「危素」同时挂到「王冕」与「秦老」两个**不同规范名**上。
     forceAliasConflict = true;
     try {
-      const imported = await importWork("儒林外史冲突别名", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-      const result = await runPipeline({ workId: imported.workId });
+      const imported = await importBook("儒林外史冲突别名", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+      const result = await runPipeline({ bookId: imported.bookId });
 
       const db = getDatabase();
       const issues = await db
@@ -652,7 +652,7 @@ describe("runPipeline 端到端（P0 → P6）", () => {
       const rows = await db
         .select({ canonical: entities.canonical })
         .from(entities)
-        .where(eq(entities.workId, imported.workId));
+        .where(eq(entities.bookId, imported.bookId));
       const canonicals = rows.map((row) => row.canonical);
       expect(canonicals).toContain("王冕");
       expect(canonicals).toContain("秦老");
@@ -660,7 +660,7 @@ describe("runPipeline 端到端（P0 → P6）", () => {
       const aliasRows = await db
         .select({ alias: entityAliases.alias })
         .from(entityAliases)
-        .where(eq(entityAliases.workId, imported.workId));
+        .where(eq(entityAliases.bookId, imported.bookId));
       expect(aliasRows.map((row) => row.alias)).not.toContain("危素");
     } finally {
       // 复原：本开关会影响后续用例的 P1 输出，必须复位。
@@ -669,7 +669,7 @@ describe("runPipeline 端到端（P0 → P6）", () => {
   }, 120_000);
 
   it("🔑 闸门别名作用域是**全书**：本片外、全书内的真别名不得被丢（批次 25）", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
     const { eq } = await import("drizzle-orm");
@@ -681,8 +681,8 @@ describe("runPipeline 端到端（P0 → P6）", () => {
     forceOutOfSliceAlias = true;
     outOfSliceAliasSlices = 0;
     try {
-      const imported = await importWork("儒林外史全书别名", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-      const result = await runPipeline({ workId: imported.workId });
+      const imported = await importBook("儒林外史全书别名", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+      const result = await runPipeline({ bookId: imported.bookId });
 
       // ① 前提校验：必须**真的**造出了「本片外」的别名，
       //    否则下面的断言会退化成「空集不含某元素」的假绿。
@@ -717,7 +717,7 @@ describe("runPipeline 端到端（P0 → P6）", () => {
       const aliasRows = await db
         .select({ alias: entityAliases.alias })
         .from(entityAliases)
-        .where(eq(entityAliases.workId, imported.workId));
+        .where(eq(entityAliases.bookId, imported.bookId));
       expect(aliasRows.map((row) => row.alias)).toContain("汶上县");
     } finally {
       forceOutOfSliceAlias = false;
@@ -726,14 +726,14 @@ describe("runPipeline 端到端（P0 → P6）", () => {
   }, 120_000);
 
   it("P1 注入滚动上下文：非首片的提示词带上前文出场人名", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
 
     extractionPrompts.length = 0;
 
-    const imported = await importWork("儒林外史上下文", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-    await runPipeline({ workId: imported.workId });
+    const imported = await importBook("儒林外史上下文", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    await runPipeline({ bookId: imported.bookId });
 
     const prompts = extractionPrompts.filter((prompt) => prompt.includes("## 待抽取文本"));
     expect(prompts.length).toBeGreaterThan(1);
@@ -783,7 +783,7 @@ describe("runPipeline 端到端（P0 → P6）", () => {
    * 而是缺陷被修掉之后，尺子必须跟着改 —— 与「改金标必须是一次被看见的动作」同一条纪律。
    */
   it("分片提取失败必须留档，且带上可归因的 errorKind", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
     const { desc, eq } = await import("drizzle-orm");
@@ -792,16 +792,16 @@ describe("runPipeline 端到端（P0 → P6）", () => {
 
     forceExtractionFailure = true;
     try {
-      const imported = await importWork("儒林外史失败留档", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+      const imported = await importBook("儒林外史失败留档", "吴敬梓", parseChapters(SAMPLE_NOVEL));
       // N20 修复后：全失败会被质量闸门拦下并抛错，**不再落库**。
-      await expect(runPipeline({ workId: imported.workId })).rejects.toThrow(/质量闸门/);
+      await expect(runPipeline({ bookId: imported.bookId })).rejects.toThrow(/质量闸门/);
 
-      // runId 不再由返回值给出（抛了），改按 workId 取最近一次运行。
+      // runId 不再由返回值给出（抛了），改按 bookId 取最近一次运行。
       const db = getDatabase();
       const [run] = await db
         .select({ id: analysisRuns.id })
         .from(analysisRuns)
-        .where(eq(analysisRuns.workId, imported.workId))
+        .where(eq(analysisRuns.bookId, imported.bookId))
         .orderBy(desc(analysisRuns.startedAt))
         .limit(1);
       expect(run?.id).toBeTruthy();
@@ -834,7 +834,7 @@ describe("runPipeline 端到端（P0 → P6）", () => {
    * 把该作品既有的图谱**清空**了。修复前 ③ 会得到 0/0 而失败。
    */
   it("N20 防护：提取全失败时不得清空既有图谱，且运行必须不报成功", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
     const { desc, eq } = await import("drizzle-orm");
@@ -843,22 +843,22 @@ describe("runPipeline 端到端（P0 → P6）", () => {
       "@/server/db/schema"
     );
 
-    const imported = await importWork("儒林外史N20防护", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+    const imported = await importBook("儒林外史N20防护", "吴敬梓", parseChapters(SAMPLE_NOVEL));
     const db = getDatabase();
     const countGraph = async (): Promise<{ entities: number; relations: number }> => {
       const entityRows = await db
         .select({ id: entities.id })
         .from(entities)
-        .where(eq(entities.workId, imported.workId));
+        .where(eq(entities.bookId, imported.bookId));
       const relationRows = await db
         .select({ id: relationships.id })
         .from(relationships)
-        .where(eq(relationships.workId, imported.workId));
+        .where(eq(relationships.bookId, imported.bookId));
       return { entities: entityRows.length, relations: relationRows.length };
     };
 
     // ① 先正常跑一次，建立一张「好的」图谱 —— 它就是必须被保住的东西。
-    const good = await runPipeline({ workId: imported.workId });
+    const good = await runPipeline({ bookId: imported.bookId });
     const before = await countGraph();
     expect(before.entities).toBeGreaterThan(0);
     expect(before.relations).toBeGreaterThan(0);
@@ -866,7 +866,7 @@ describe("runPipeline 端到端（P0 → P6）", () => {
     // ② 同一个作品，在「P1 全部失败」下重跑 —— 这正是 N20 的形态。
     forceExtractionFailure = true;
     try {
-      await expect(runPipeline({ workId: imported.workId })).rejects.toThrow(/质量闸门/);
+      await expect(runPipeline({ bookId: imported.bookId })).rejects.toThrow(/质量闸门/);
     } finally {
       forceExtractionFailure = false;
     }
@@ -879,7 +879,7 @@ describe("runPipeline 端到端（P0 → P6）", () => {
     const [latestRun] = await db
       .select({ id: analysisRuns.id, status: analysisRuns.status })
       .from(analysisRuns)
-      .where(eq(analysisRuns.workId, imported.workId))
+      .where(eq(analysisRuns.bookId, imported.bookId))
       .orderBy(desc(analysisRuns.startedAt))
       .limit(1);
     expect(latestRun?.id).not.toBe(good.runId);
@@ -924,7 +924,7 @@ describe("runPipeline 端到端（P0 → P6）", () => {
    * 改成恒假 → 本用例失败（变异编号 M32，见 `_wb_mutation_8c.py`）。
    */
   it("M1：撞输出上限必须留档 extract_hit_token_limit（真值，不是代理）", async () => {
-    const { importWork } = await import("@/server/modules/importing/persist");
+    const { importBook } = await import("@/server/modules/importing/persist");
     const { parseChapters } = await import("@/server/modules/importing/parse-text");
     const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
     const { eq } = await import("drizzle-orm");
@@ -936,8 +936,8 @@ describe("runPipeline 端到端（P0 → P6）", () => {
 
     forceTruncated = true;
     try {
-      const imported = await importWork("儒林外史截断留档", "吴敬梓", parseChapters(SAMPLE_NOVEL));
-      const result = await runPipeline({ workId: imported.workId });
+      const imported = await importBook("儒林外史截断留档", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+      const result = await runPipeline({ bookId: imported.bookId });
 
       const db = getDatabase();
       const issues = await db

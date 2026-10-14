@@ -11,7 +11,7 @@ import {
   analysisRuns,
   chapters,
   paragraphs,
-  works
+  books
 } from "@/server/db/schema";
 import {
   AiCallError,
@@ -97,8 +97,8 @@ import { voteRelations } from "./vote";
 /** 运行上下文（承载审计所需的 id 与统计）。 */
 interface RunContext {
   runId           : string;
-  workId          : string;
-  workTitle       : string;
+  bookId          : string;
+  bookTitle       : string;
   chapterCount    : number;
   /** 累计成本（美元）；单价未知时该次调用不计入，但会留档告警。 */
   costUsd         : number;
@@ -193,7 +193,7 @@ const PERSIST_MIN_FAILURE_COUNT = 2;
 /** 管线最终产出。 */
 export interface PipelineResult {
   runId        : string;
-  workId       : string;
+  bookId       : string;
   entityCount  : number;
   relationCount: number;
   /** 各阶段累计 token 与成本，用于「单书 token 消耗落档」验收。 */
@@ -638,7 +638,7 @@ async function extractOneSlice(
 
 /** 管线输入。 */
 export interface RunPipelineInput {
-  workId: string;
+  bookId: string;
 }
 
 /**
@@ -819,7 +819,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   const storedChapters = await db
     .select({ id: chapters.id, ordinal: chapters.ordinal, title: chapters.title })
     .from(chapters)
-    .where(eq(chapters.workId, input.workId))
+    .where(eq(chapters.bookId, input.bookId))
     .orderBy(chapters.ordinal);
 
   // 前置内容（出版方导读 / 封面 / 版权页）**不参与解析**。
@@ -829,13 +829,13 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   const chapterRows = selectAnalyzableChapters(storedChapters);
 
   if (chapterRows.length === 0) {
-    throw new Error(`作品 ${input.workId} 没有可解析的章节，请先执行 pnpm import:book`);
+    throw new Error(`作品 ${input.bookId} 没有可解析的章节，请先执行 pnpm import:book`);
   }
 
   const [run] = await db
     .insert(analysisRuns)
     .values({
-      workId       : input.workId,
+      bookId       : input.bookId,
       status       : "running",
       modelSnapshot: snapshot,
       promptVersion: (await import("./prompts")).PROMPT_VERSION,
@@ -849,8 +849,8 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
 
   const context: RunContext = {
     runId           : run.id,
-    workId          : input.workId,
-    workTitle       : "",
+    bookId          : input.bookId,
+    bookTitle       : "",
     chapterCount    : chapterRows.length,
     costUsd         : 0,
     budgetUsd       : budget.budgetUsd,
@@ -864,25 +864,25 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     failedSlices    : new Set<number>()
   };
 
-  // 作品包解析：按 `works.title` 选专名词典。
+  // 作品包解析：按 `books.title` 选专名词典。
   //
   // 为什么必须**留档**：未注册作品的兜底是「零专名」，只表现为分词质量下降
   // （实测基线整词率 75.7%，配对的词典可到 97.4%），**不会报错**。
   // 不留档的话，「第二本书人名切不准」就会被归因成分词库不行，
   // 而真正的原因是「这本书还没注册作品包」。
   // 详见 `genre-pack/registry.ts`。
-  const [workRow] = await db
-    .select({ title: works.title })
-    .from(works)
-    .where(eq(works.id, input.workId))
+  const [bookRow] = await db
+    .select({ title: books.title })
+    .from(books)
+    .where(eq(books.id, input.bookId))
     .limit(1);
 
-  context.workTitle = workRow?.title ?? "";
-  const workPackResolution = resolveWorkPack(context.workTitle);
+  context.bookTitle = bookRow?.title ?? "";
+  const workPackResolution = resolveWorkPack(context.bookTitle);
   const workPack = workPackResolution.pack;
 
   await recordIssue(context, "work_pack_resolved", {
-    workTitle   : context.workTitle,
+    bookTitle   : context.bookTitle,
     packId      : workPack.id,
     packLabel   : workPack.label,
     matched     : workPackResolution.matched,
@@ -903,7 +903,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       })
       .from(paragraphs)
       .innerJoin(chapters, eq(paragraphs.chapterId, chapters.id))
-      .where(eq(chapters.workId, input.workId));
+      .where(eq(chapters.bookId, input.bookId));
 
     const byChapter = new Map<string, { ordinal: number; text: string }[]>();
     for (const row of paragraphRows) {
@@ -1188,11 +1188,11 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     const mentionKeys = [
       ...new Set(merged.entities.flatMap((entity) => [normalizeName(entity.canonical), ...entity.memberKeys]))
     ];
-    const mentionIndex = await buildMentionIndex(input.workId, mentionKeys);
+    const mentionIndex = await buildMentionIndex(input.bookId, mentionKeys);
 
     const persisted = await persistGraph(
       {
-        workId          : input.workId,
+        bookId          : input.bookId,
         runId           : context.runId,
         entities        : merged.entities,
         relations       : persistableRelations,
@@ -1257,7 +1257,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
 
     return {
       runId        : context.runId,
-      workId       : input.workId,
+      bookId       : input.bookId,
       entityCount  : persisted.entityCount,
       relationCount: persisted.relationCount,
       cost         : {

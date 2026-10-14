@@ -1,14 +1,14 @@
 import { eq } from "drizzle-orm";
 
 import { getDatabase } from "@/server/db/client";
-import { works } from "@/server/db/schema";
+import { books } from "@/server/db/schema";
 import { runPipeline } from "@/server/modules/analysis/pipeline/run";
 
 /**
  * 解析执行脚本。
  *
  * 用法：
- *   pnpm analyze <workId>
+ *   pnpm analyze <bookId>
  *   pnpm analyze --title 《儒林外史》
  *
  * 设计原因：把「执行解析」做成独立 CLI 而非 API 路由，
@@ -16,7 +16,7 @@ import { runPipeline } from "@/server/modules/analysis/pipeline/run";
  */
 
 /** 解析命令行参数。 */
-async function resolveWorkId(argv: readonly string[]): Promise<string> {
+async function resolveBookId(argv: readonly string[]): Promise<string> {
   const positional = argv[0];
   if (positional !== undefined && positional.length > 0 && positional !== "--title") {
     return positional;
@@ -25,14 +25,14 @@ async function resolveWorkId(argv: readonly string[]): Promise<string> {
   const titleIndex = argv.indexOf("--title");
   const title = titleIndex >= 0 ? argv[titleIndex + 1] : undefined;
   if (title === undefined) {
-    throw new Error("用法：pnpm analyze <workId> 或 pnpm analyze --title <作品标题>");
+    throw new Error("用法：pnpm analyze <bookId> 或 pnpm analyze --title <作品标题>");
   }
 
   const db = getDatabase();
   const rows = await db
-    .select({ id: works.id })
-    .from(works)
-    .where(eq(works.title, title))
+    .select({ id: books.id })
+    .from(books)
+    .where(eq(books.title, title))
     .limit(1);
   const id = rows[0]?.id;
   if (id === undefined) {
@@ -43,8 +43,8 @@ async function resolveWorkId(argv: readonly string[]): Promise<string> {
 
 /** 入口。 */
 async function main(): Promise<void> {
-  const workId = await resolveWorkId(process.argv.slice(2));
-  console.log(`[analyze] 开始解析作品 ${workId}`);
+  const bookId = await resolveBookId(process.argv.slice(2));
+  console.log(`[analyze] 开始解析作品 ${bookId}`);
 
   // ⚠️ N20 的教训有两个方向，两个方向都必须处理：
   //   ① `runPipeline` **正常返回**不等于成功 —— 一次全 402 的运行照样会走完
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
   //      脚本会把一次被质量闸门拦下的运行当成成功，继续往下跑。
   let result: Awaited<ReturnType<typeof runPipeline>>;
   try {
-    result = await runPipeline({ workId });
+    result = await runPipeline({ bookId });
   } catch (error) {
     console.error("[analyze] 解析失败，本次未落库（该作品既有图谱保持不变）");
     console.error(`  ${error instanceof Error ? error.message : String(error)}`);

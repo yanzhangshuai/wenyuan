@@ -81,7 +81,7 @@ async function loadShippedGoldHlm() {
 describe("GoldSetSchema —— 字段契约", () => {
   it("`annotationNotes` 缺省为空数组（既有金标文件无需改动即可继续解析）", () => {
     const parsed = GoldSetSchema.parse({
-      workTitle   : "某书",
+      bookTitle   : "某书",
       chapterRange: [1, 3]
     });
 
@@ -94,7 +94,7 @@ describe("GoldSetSchema —— 字段契约", () => {
     // 若放行 0，就等于允许把「前言」当成第 1 回来标注，
     // 而整本书的章号会因此整体偏移一位（历史缺陷）。
     const result = GoldSetSchema.safeParse({
-      workTitle   : "某书",
+      bookTitle   : "某书",
       chapterRange: [0, 3]
     });
 
@@ -104,7 +104,7 @@ describe("GoldSetSchema —— 字段契约", () => {
   it("区间上界小于下界时 schema 层不拦（由 describeChapterRange 报「区间内没有章节」）", () => {
     // 刻意记录这一分工：schema 只管单位与类型，**轴是否对得上**由
     // `describeChapterRange` 在报告里点名（它会把解析到的章节标题打出来）。
-    const result = GoldSetSchema.safeParse({ workTitle: "某书", chapterRange: [5, 2] });
+    const result = GoldSetSchema.safeParse({ bookTitle: "某书", chapterRange: [5, 2] });
 
     expect(result.success).toBe(true);
   });
@@ -114,7 +114,7 @@ describe("仓库内金标文件（gold/rulin-waishi-1-3.json）", () => {
   it("能被解析（防 JSON typo —— 此前只有连真库跑评测时才会发现）", async () => {
     const gold = await loadShippedGold();
 
-    expect(gold.workTitle).toBe("儒林外史");
+    expect(gold.bookTitle).toBe("儒林外史");
     expect(gold.chapterRange).toEqual([1, 3]);
     expect(gold.entities.length).toBeGreaterThan(0);
     expect(gold.relations.length).toBeGreaterThan(0);
@@ -324,7 +324,7 @@ describe("仓库内金标文件（gold/rulin-waishi-1-1.json，穷尽标注第�
   it("能被解析，且区间恰为第一回", async () => {
     const gold = await loadShippedGold11();
 
-    expect(gold.workTitle).toBe("儒林外史");
+    expect(gold.bookTitle).toBe("儒林外史");
     expect(gold.chapterRange).toEqual([1, 1]);
     // 43 个实体 / 9 条关系是**穷尽标注的结果**，不是要凑的目标值。
     // 刻意写成硬相等：改动这把尺子必须是一次被看见、被 review 的动作 ——
@@ -421,7 +421,7 @@ describe("仓库内金标文件（gold/hongloumeng-1-3.json，第二部小说的
   it("能被解析，且区间恰为第 1–3 章（⚠️ 红楼语料用「第N章」，不是「第N回」）", async () => {
     const gold = await loadShippedGoldHlm();
 
-    expect(gold.workTitle).toBe("红楼梦");
+    expect(gold.bookTitle).toBe("红楼梦");
     expect(gold.chapterRange).toEqual([1, 3]);
     expect(gold.entities.length).toBeGreaterThan(0);
     expect(gold.relations.length).toBeGreaterThan(0);

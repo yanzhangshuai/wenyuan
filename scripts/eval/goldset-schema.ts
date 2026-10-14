@@ -32,7 +32,7 @@ export const GoldRelationSchema = z.object({
 
 /** 金标文件（按章节粒度标注）。 */
 export const GoldSetSchema = z.object({
-  workTitle      : z.string().min(1),
+  bookTitle      : z.string().min(1),
   /**
    * 标注覆盖的**回号**区间（闭区间，如 `[1, 3]` 表示第 1–3 回）。
    *

@@ -41,7 +41,7 @@ import {
   entityAliases,
   entityMentions,
   relationships,
-  works
+  books
 } from "@/server/db/schema";
 
 import {
@@ -70,10 +70,10 @@ const CODE_TO_CATEGORY: ReadonlyMap<string, number> = new Map(
   RELATION_TYPES.map((item) => [item.code, item.category])
 );
 
-function parseArgs(argv: readonly string[]): { dataset: string; selfcheck: boolean; work: string | undefined; top: number } {
+function parseArgs(argv: readonly string[]): { dataset: string; selfcheck: boolean; book: string | undefined; top: number } {
   let dataset = "";
   let selfcheck = false;
-  let work: string | undefined;
+  let book: string | undefined;
   let top = 50;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -83,7 +83,7 @@ function parseArgs(argv: readonly string[]): { dataset: string; selfcheck: boole
     } else if (arg === "--selfcheck") {
       selfcheck = true;
     } else if (arg === "--work") {
-      work = argv[index + 1];
+      book = argv[index + 1];
       index += 1;
     } else if (arg === "--top") {
       top = Number(argv[index + 1] ?? "50");
@@ -95,7 +95,7 @@ function parseArgs(argv: readonly string[]): { dataset: string; selfcheck: boole
       "用法：chinovelke-eval.ts --dataset <chinovelke.json> (--selfcheck | --work <作品标题>) [--top 50]"
     );
   }
-  return { dataset, selfcheck, work, top };
+  return { dataset, selfcheck, book, top };
 }
 
 /** 自检模式：不连库，只验指标实现。 */
@@ -144,32 +144,32 @@ interface V3Graph {
 }
 
 /** 读 v3 图谱（按提及数降序）。 */
-async function loadV3Graph(workTitle: string): Promise<V3Graph> {
+async function loadV3Graph(bookTitle: string): Promise<V3Graph> {
   const db = getDatabase();
-  const [workRow] = await db
-    .select({ id: works.id })
-    .from(works)
-    .where(eq(works.title, workTitle))
+  const [bookRow] = await db
+    .select({ id: books.id })
+    .from(books)
+    .where(eq(books.title, bookTitle))
     .limit(1);
-  if (workRow === undefined) {
-    throw new Error(`库里没有《${workTitle}》`);
+  if (bookRow === undefined) {
+    throw new Error(`库里没有《${bookTitle}》`);
   }
 
   const entityRows = await db
     .select({ id: entitiesTable.id, canonical: entitiesTable.canonical, type: entitiesTable.type })
     .from(entitiesTable)
-    .where(eq(entitiesTable.workId, workRow.id));
+    .where(eq(entitiesTable.bookId, bookRow.id));
 
   const mentionRows = await db
     .select({ entityId: entityMentions.entityId })
     .from(entityMentions)
     .innerJoin(entitiesTable, eq(entitiesTable.id, entityMentions.entityId))
-    .where(eq(entitiesTable.workId, workRow.id));
+    .where(eq(entitiesTable.bookId, bookRow.id));
 
   const aliasRows = await db
     .select({ entityId: entityAliases.entityId, alias: entityAliases.alias })
     .from(entityAliases)
-    .where(eq(entityAliases.workId, workRow.id));
+    .where(eq(entityAliases.bookId, bookRow.id));
 
   // 🚨 批次 45：**必须显式排序** —— 否则「同一对取哪条关系」由 DB 行序决定，分数**不可复现**。
   //    语义 = 取**最早观察到**的那条（`start_chapter` 最小）；并列按关系码、`id` 兜底保证**全序**。
@@ -181,7 +181,7 @@ async function loadV3Graph(workTitle: string): Promise<V3Graph> {
       targetId: relationships.targetEntityId
     })
     .from(relationships)
-    .where(eq(relationships.workId, workRow.id))
+    .where(eq(relationships.bookId, bookRow.id))
     .orderBy(relationships.startChapter, relationships.relationTypeCode, relationships.id);
 
   const mentionCount = new Map<string, number>();
@@ -224,12 +224,12 @@ async function loadV3Graph(workTitle: string): Promise<V3Graph> {
 }
 
 /** 打分模式。 */
-async function runWork(datasetPath: string, workTitle: string, top: number): Promise<number> {
+async function runBook(datasetPath: string, bookTitle: string, top: number): Promise<number> {
   const dataset = ChiNovelKeSchema.parse(JSON.parse(await readFile(datasetPath, "utf8")) as unknown);
 
-  const hit = TITLE_TO_NOVEL.find(([title]) => normalizeName(workTitle).startsWith(normalizeName(title)));
+  const hit = TITLE_TO_NOVEL.find(([title]) => normalizeName(bookTitle).startsWith(normalizeName(title)));
   if (hit === undefined) {
-    throw new Error(`《${workTitle}》不在 ChiNovelKE 的三本书里（西游记 / 红楼梦 / 水浒传）`);
+    throw new Error(`《${bookTitle}》不在 ChiNovelKE 的三本书里（西游记 / 红楼梦 / 水浒传）`);
   }
   const novelKey = hit[1];
   const novel = dataset.novels[novelKey];
@@ -237,10 +237,10 @@ async function runWork(datasetPath: string, workTitle: string, top: number): Pro
     throw new Error(`数据集里没有 ${novelKey}`);
   }
 
-  const graph = await loadV3Graph(workTitle);
+  const graph = await loadV3Graph(bookTitle);
 
   console.log("═".repeat(78));
-  console.log(`ChiNovelKE 对标 —— v3《${workTitle}》 vs 参考项目《${novel.title}》（${novel.genre}）`);
+  console.log(`ChiNovelKE 对标 —— v3《${bookTitle}》 vs 参考项目《${novel.title}》（${novel.genre}）`);
   console.log("═".repeat(78));
   console.log("⚠️ 口径 A（同口径 Top-50，**偏易样本**）与 v3 自有**穷尽标注**金标**不可直接相比**。");
   console.log(`v3 图谱：实体 ${String(graph.entities.length)}　关系 ${String(graph.relations.length)}`);
@@ -386,10 +386,10 @@ async function main(): Promise<number> {
   if (options.selfcheck) {
     return runSelfCheck(options.dataset);
   }
-  if (options.work === undefined) {
+  if (options.book === undefined) {
     throw new Error("需要 --selfcheck 或 --work <作品标题>");
   }
-  return runWork(options.dataset, options.work, options.top);
+  return runBook(options.dataset, options.book, options.top);
 }
 
 process.exit(await main());

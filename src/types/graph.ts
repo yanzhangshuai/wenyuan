@@ -55,8 +55,8 @@ export interface GraphLegendEntry {
 
 /** 图谱快照（页面首屏所需的全部数据）。 */
 export interface GraphSnapshot {
-  workId            : string;
-  workTitle         : string;
+  bookId            : string;
+  bookTitle         : string;
   chapterCount      : number;
   nodes             : GraphNode[];
   edges             : GraphEdge[];
