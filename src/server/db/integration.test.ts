@@ -321,8 +321,14 @@ describe("图谱落库与读回", () => {
 
     // 证据引用被读回并挂到边上；师生属第 3 组（从属）。
     const teacherEdge = snapshot?.edges.find((edge) => edge.typeCode === "师生");
-    expect(teacherEdge?.quote).not.toBeNull();
+    expect(teacherEdge?.evidenceQuotes.length).toBeGreaterThan(0);
+    expect(teacherEdge?.evidenceCount).toBe(teacherEdge?.evidenceQuotes.length);
     expect(teacherEdge?.category).toBe(3);
+
+    // 新增字段：章节摘要与按切片实算的关系码统计。
+    expect(snapshot?.chapters.length).toBeGreaterThan(0);
+    expect(snapshot?.codeStats.length).toBeGreaterThan(0);
+    expect(snapshot?.nodes.every((node) => node.subDegree >= 0)).toBe(true);
   });
 
   it("未登记的关系码被外键拒绝（提示必须先执行 db:seed）", async () => {

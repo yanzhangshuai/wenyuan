@@ -1,9 +1,10 @@
 import "server-only";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { connection } from "next/server";
 import { cache } from "react";
 
+import { resolveRelationCategory } from "@/lib/graph/grouping";
 import { groupDeedsByChapter } from "@/lib/graph/profile";
 import { getDatabase } from "@/server/db/client";
 import {
@@ -11,9 +12,11 @@ import {
   entities,
   entityAliases,
   entityMentions,
-  paragraphs
+  evidenceSpans,
+  paragraphs,
+  relationships
 } from "@/server/db/schema";
-import type { EntityDeed, EntityProfile } from "@/types/profile";
+import type { EntityDeed, EntityProfile, EntityRelationBrief } from "@/types/profile";
 
 /**
  * 实体档案查询（服务端）——「人物百科」的**确定性**数据来源。
@@ -121,3 +124,121 @@ export const loadEntityProfile = cache(async (entityId: string): Promise<EntityP
     timeline
   };
 });
+
+/**
+ * 读取实体在本书内的关系简述（档案页的「第 2 层：关系时间轴」）。
+ *
+ * 与 `loadEntityProfile` 分开的理由：
+ * - 两者的**失败语义不同** —— 实体不存在时档案返回 null，而关系为空是合法状态
+ *   （大量长尾实体没有任何关系记录），合并成一个返回值会让「不存在」与「无关系」混淆；
+ * - 档案页可以**先渲染时间线、再补关系**，不必被关系查询拖慢首屏。
+ *
+ * 为什么只取首条 quote：档案页的关系表是**索引**（点了跳图谱看全部依据），
+ * 全量证据留给图谱详情卡（那里才有逐条展开的空间）。
+ *
+ * @param entityId 实体 ID
+ * @returns 关系简述；按分组、再按起始回号排序
+ */
+export const loadEntityRelations = cache(
+  async (entityId: string): Promise<EntityRelationBrief[]> => {
+    await connection();
+
+    const db = getDatabase();
+
+    // 两个方向都算：`relationships` 是邻接表，无向遍历须以 OR 合并。
+    const rows = await db
+      .select({
+        id          : relationships.id,
+        sourceId    : relationships.sourceEntityId,
+        targetId    : relationships.targetEntityId,
+        typeCode    : relationships.relationTypeCode,
+        startChapter: relationships.startChapter,
+        endChapter  : relationships.endChapter,
+        status      : relationships.status
+      })
+      .from(relationships)
+      .where(
+        or(
+          eq(relationships.sourceEntityId, entityId),
+          eq(relationships.targetEntityId, entityId)
+        )
+      )
+      .orderBy(asc(relationships.startChapter));
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const counterpartIds = [
+      ...new Set(
+        rows.map((row) => (row.sourceId === entityId ? row.targetId : row.sourceId))
+      )
+    ];
+
+    const [counterpartRows, quoteRows] = await Promise.all([
+      db
+        .select({ id: entities.id, canonical: entities.canonical })
+        .from(entities)
+        .where(inArray(entities.id, counterpartIds)),
+
+      // 每条关系取**一条**证据（按 start_offset 稳定取最小者），供档案页摘要展示。
+      db
+        .select({
+          relationshipId: evidenceSpans.relationshipId,
+          quote         : evidenceSpans.quote
+        })
+        .from(evidenceSpans)
+        .where(
+          inArray(
+            evidenceSpans.relationshipId,
+            rows.map((row) => row.id)
+          )
+        )
+        .orderBy(asc(evidenceSpans.startOffset))
+    ]);
+
+    const nameById = new Map(counterpartRows.map((row) => [row.id, row.canonical]));
+    const firstQuoteByRelation = new Map<string, string>();
+    for (const row of quoteRows) {
+      if (row.relationshipId === null || firstQuoteByRelation.has(row.relationshipId)) {
+        continue;
+      }
+      firstQuoteByRelation.set(row.relationshipId, row.quote);
+    }
+
+    return rows
+      .map((row) => {
+        const counterpartId = row.sourceId === entityId ? row.targetId : row.sourceId;
+        return {
+          id          : row.id,
+          counterpart : nameById.get(counterpartId) ?? "未知",
+          typeCode    : row.typeCode,
+          category    : resolveRelationCategory(row.typeCode),
+          startChapter: row.startChapter,
+          endChapter  : row.endChapter,
+          status      : row.status,
+          quote       : firstQuoteByRelation.get(row.id) ?? null
+        } satisfies EntityRelationBrief;
+      })
+      .sort((left, right) => {
+        if (left.category !== right.category) {
+          return left.category - right.category;
+        }
+        return left.startChapter - right.startChapter;
+      });
+  }
+);
+
+/** 供档案页一次性取齐；与 `loadEntityProfile` 同源，避免两处拼接。 */
+export const loadEntityProfileWithRelations = cache(
+  async (
+    entityId: string
+  ): Promise<{ profile: EntityProfile; relations: EntityRelationBrief[] } | null> => {
+    const profile = await loadEntityProfile(entityId);
+    if (profile === null) {
+      return null;
+    }
+    const relations = await loadEntityRelations(entityId);
+    return { profile, relations };
+  }
+);

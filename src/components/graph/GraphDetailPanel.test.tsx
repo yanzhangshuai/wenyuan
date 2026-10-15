@@ -18,22 +18,24 @@ const NODE: GraphNode = {
   type        : "PERSON",
   factionIndex: null,
   degree      : 2,
+  subDegree   : 2,
   mentionCount: 40
 };
 
 /** 构造一条关系。 */
 function makeEdge(overrides: Partial<GraphEdge> = {}): GraphEdge {
   return {
-    id          : "edge-1",
-    source      : "node-a",
-    target      : "node-b",
-    typeCode    : "师生",
-    label       : "师生",
-    category    : 3,
-    startChapter: 3,
-    endChapter  : null,
-    status      : "ACTIVE",
-    quote       : null,
+    id            : "edge-1",
+    source        : "node-a",
+    target        : "node-b",
+    typeCode      : "师生",
+    label         : "师生",
+    category      : 3,
+    startChapter  : 3,
+    endChapter    : null,
+    status        : "ACTIVE",
+    evidenceQuotes: [],
+    evidenceCount : 0,
     ...overrides
   };
 }
@@ -110,13 +112,51 @@ describe("GraphDetailPanel", () => {
     render(
       <GraphDetailPanel
         node={NODE}
-        relations={[makeEdge({ quote: "周学道坐在堂上，见范进进来。" })]}
+        relations={[
+          makeEdge({
+            evidenceQuotes: ["周学道坐在堂上，见范进进来。"],
+            evidenceCount : 1
+          })
+        ]}
         counterpartNames={new Map([["edge-1", "周进"]])}
         onSelectNode={vi.fn()}
         onClose={vi.fn()}
       />
     );
     expect(screen.getByText("周学道坐在堂上，见范进进来。")).toBeInTheDocument();
+  });
+
+  it("多条证据引用时全部渲染", () => {
+    render(
+      <GraphDetailPanel
+        node={NODE}
+        relations={[
+          makeEdge({
+            evidenceQuotes: ["第一段依据。", "第二段依据。", "第三段依据。"],
+            evidenceCount : 3
+          })
+        ]}
+        counterpartNames={new Map([["edge-1", "周进"]])}
+        onSelectNode={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    expect(screen.getByText("第一段依据。")).toBeInTheDocument();
+    expect(screen.getByText("第二段依据。")).toBeInTheDocument();
+    expect(screen.getByText("第三段依据。")).toBeInTheDocument();
+  });
+
+  it("无证据时不渲染引用块", () => {
+    const { container } = render(
+      <GraphDetailPanel
+        node={NODE}
+        relations={[makeEdge({ evidenceQuotes: [], evidenceCount: 0 })]}
+        counterpartNames={new Map([["edge-1", "周进"]])}
+        onSelectNode={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    expect(container.querySelectorAll(".graph-detail-quote")).toHaveLength(0);
   });
 
   it("点击对端实体名回调对端 ID", () => {

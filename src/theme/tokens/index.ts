@@ -17,20 +17,26 @@ import { xingkong } from "./xingkong";
  * 字段业务语义：
  * - `id`：主题唯一标识（必须与 `ThemeId` 一致）；
  * - `label`：主题中文显示名；
- * - `factionColors`：派系颜色列表，按业务约定顺序与派系槽位一一对应。
+ * - `edgeTypeColors`：**边**色盘，下标 = 关系语义分组（`RelationCategory`）；
+ * - `nodeColors`：**节点球体**色盘，下标同关系语义分组。
  */
 export interface ThemeTokens {
   /** 主题唯一 ID：必须与 ThemeId 对齐，作为映射主键参与查表。 */
   readonly id            : ThemeId;
   /** 主题在选择器中的中文名称，仅用于展示。 */
   readonly label         : string;
-  /** 派系颜色盘：按业务约定顺序对应派系槽位，顺序本身是业务规则。 */
-  readonly factionColors : readonly string[];
   /**
    * 关系类型颜色盘：按索引顺序依次分配给图谱中出现的关系类型。
    * 用于前端 ForceGraph 边着色与图例展示；顺序稳定后不建议调整，以免颜色突变。
    */
   readonly edgeTypeColors: readonly string[];
+  /**
+   * 节点球体颜色盘：按索引对应关系语义分组，用于**节点填充**。
+   *
+   * 与 `edgeTypeColors` 同索引、不同色值 —— 边是细线、节点是实心球，
+   * 对明度/饱和度的需求不同（见各主题文件内的说明）。
+   */
+  readonly nodeColors    : readonly string[];
 }
 
 /**
@@ -47,22 +53,22 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
 };
 
 /**
- * 按主题获取派系颜色盘。
+ * 按主题获取节点球体颜色盘。
  *
  * @param theme 主题 ID（可能来自 URL、localStorage 或用户设置，允许为空）
- * @returns 对应主题的颜色数组；若参数无效则回退到 `suya` 默认配色
+ * @returns 对应主题的节点色数组；若参数无效则回退到 `suya` 默认配色
  *
  * 分支说明：
  * - `theme` 存在且命中映射：返回对应主题颜色；
  * - 其余情况回退默认主题：这是防御式容错，避免异常输入导致 UI 崩溃。
  */
-export function getFactionColorsForTheme(theme: string | undefined): readonly string[] {
+export function getNodeColorsForTheme(theme: string | undefined): readonly string[] {
   // 先检查入参是否存在且命中映射：避免外部输入（URL/localStorage）污染导致运行时报错。
   if (theme && theme in THEME_TOKENS) {
-    return THEME_TOKENS[theme as ThemeId].factionColors;
+    return THEME_TOKENS[theme as ThemeId].nodeColors;
   }
   // 无效值统一回退到 `suya`：这是产品默认主题策略，不是技术限制。
-  return THEME_TOKENS.suya.factionColors;
+  return THEME_TOKENS.suya.nodeColors;
 }
 
 /**

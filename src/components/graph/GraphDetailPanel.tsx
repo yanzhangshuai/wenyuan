@@ -25,6 +25,13 @@ export interface GraphDetailPanelProps {
   onSelectNode    : (nodeId: string) => void;
   /** 关闭面板。 */
   onClose         : () => void;
+  /**
+   * 人物档案页链接（可选）。
+   *
+   * 传入时在头部渲染「查看人物档案」入口 —— 图谱回答「和谁有关系」，
+   * 档案回答「做过什么」，两者是不同的阅读需求，故需要显式跳转。
+   */
+  profileHref?    : string;
 }
 
 /** 把章节区间渲染成可读文案。 */
@@ -43,7 +50,8 @@ export function GraphDetailPanel({
   relations,
   counterpartNames,
   onSelectNode,
-  onClose
+  onClose,
+  profileHref
 }: GraphDetailPanelProps) {
   const { selectedTheme, isHydrated } = useHydratedTheme();
   const edgeColors = getEdgeTypeColorsForTheme(
@@ -71,6 +79,12 @@ export function GraphDetailPanel({
           ×
         </button>
       </header>
+
+      {profileHref === undefined ? null : (
+        <a className="graph-detail-profile-link" href={profileHref}>
+          查看人物档案 →
+        </a>
+      )}
 
       {relations.length === 0 ? (
         <p className="graph-detail-hint">该实体暂无已解析出的关系。</p>
@@ -102,8 +116,14 @@ export function GraphDetailPanel({
 
               <p className="graph-detail-range">{formatChapterRange(edge)}</p>
 
-              {edge.quote === null ? null : (
-                <blockquote className="graph-detail-quote">{edge.quote}</blockquote>
+              {edge.evidenceQuotes.length === 0 ? null : (
+                <ul className="graph-detail-quotes">
+                  {edge.evidenceQuotes.map((quote, index) => (
+                    <li key={`${edge.id}-${String(index)}`}>
+                      <blockquote className="graph-detail-quote">{quote}</blockquote>
+                    </li>
+                  ))}
+                </ul>
               )}
             </li>
           ))}

@@ -10,15 +10,24 @@ import {
   limitGraphSize,
   resolveRelationCategory
 } from "@/lib/graph/grouping";
+import { RELATION_TYPES } from "@/lib/relations";
 import { getDatabase } from "@/server/db/client";
 import {
+  chapters,
   entities,
   entityMentions,
   evidenceSpans,
   relationships,
   books
 } from "@/server/db/schema";
-import type { GraphEdge, GraphLegendEntry, GraphNode, GraphSnapshot } from "@/types/graph";
+import type {
+  GraphChapter,
+  GraphCodeStat,
+  GraphEdge,
+  GraphLegendEntry,
+  GraphNode,
+  GraphSnapshot
+} from "@/types/graph";
 
 /**
  * 图谱快照查询（服务端）。
@@ -57,7 +66,7 @@ export const loadGraphSnapshot = cache(async (bookId: string): Promise<GraphSnap
     return null;
   }
 
-  const [entityRows, relationRows, mentionRows] = await Promise.all([
+  const [entityRows, relationRows, mentionRows, chapterRows] = await Promise.all([
     db
       .select({
         id          : entities.id,
@@ -85,7 +94,16 @@ export const loadGraphSnapshot = cache(async (bookId: string): Promise<GraphSnap
       .select({ entityId: entityMentions.entityId })
       .from(entityMentions)
       .innerJoin(entities, eq(entityMentions.entityId, entities.id))
-      .where(eq(entities.bookId, bookId))
+      .where(eq(entities.bookId, bookId)),
+
+    db
+      .select({
+        ordinal: chapters.ordinal,
+        title  : chapters.title
+      })
+      .from(chapters)
+      .where(eq(chapters.bookId, bookId))
+      .orderBy(chapters.ordinal)
   ]);
 
   // 提及数：实体 → 段落出现次数。
@@ -107,34 +125,48 @@ export const loadGraphSnapshot = cache(async (bookId: string): Promise<GraphSnap
     type        : row.type,
     factionIndex: row.factionIndex,
     degree      : degrees.get(row.id) ?? 0,
+    // 子图度数先占位，待裁剪后再实算（见下方 `limited` 处理）。
+    subDegree   : 0,
     mentionCount: mentionCounts.get(row.id) ?? 0
   }));
 
   const allEdges: GraphEdge[] = relationRows.map((row) => ({
-    id          : row.id,
-    source      : row.sourceEntityId,
-    target      : row.targetEntityId,
-    typeCode    : row.relationTypeCode,
-    label       : row.relationTypeCode,
-    category    : resolveRelationCategory(row.relationTypeCode),
-    startChapter: row.startChapter,
-    endChapter  : row.endChapter,
-    status      : row.status,
-    quote       : null
+    id            : row.id,
+    source        : row.sourceEntityId,
+    target        : row.targetEntityId,
+    typeCode      : row.relationTypeCode,
+    label         : row.relationTypeCode,
+    category      : resolveRelationCategory(row.relationTypeCode),
+    startChapter  : row.startChapter,
+    endChapter    : row.endChapter,
+    status        : row.status,
+    // 证据在下面按保留边批量填充；先给空数组避免字段缺失。
+    evidenceQuotes: [],
+    evidenceCount : 0
   }));
 
   // 裁剪：长篇小说节点数可达上千，需聚焦主线人物。
   const limited = limitGraphSize(allNodes, allEdges, DEFAULT_MAX_NODES);
 
+  // 子图度数：只统计保留下来的边，与全库 `degree` 显式区分。
+  const subDegrees = new Map<string, number>();
+  for (const edge of limited.edges) {
+    subDegrees.set(edge.source, (subDegrees.get(edge.source) ?? 0) + 1);
+    subDegrees.set(edge.target, (subDegrees.get(edge.target) ?? 0) + 1);
+  }
+  const nodes = limited.nodes.map((node) => ({
+    ...node,
+    subDegree: subDegrees.get(node.id) ?? 0
+  }));
+
   // 证据引用：仅对保留下来的关系查询，避免无谓 IO。
   const keptEdgeIds = limited.edges.map((edge) => edge.id);
-  const quoteByRelation = await loadEvidenceQuotes(keptEdgeIds);
+  const quotesByRelation = await loadEvidenceQuotes(keptEdgeIds);
 
-  const nodes = limited.nodes;
-  const edges = limited.edges.map((edge) => ({
-    ...edge,
-    quote: quoteByRelation.get(edge.id) ?? null
-  }));
+  const edges = limited.edges.map((edge) => {
+    const quotes = quotesByRelation.get(edge.id) ?? [];
+    return { ...edge, evidenceQuotes: quotes, evidenceCount: quotes.length };
+  });
 
   return {
     bookId            : book.id,
@@ -143,19 +175,24 @@ export const loadGraphSnapshot = cache(async (bookId: string): Promise<GraphSnap
     nodes,
     edges,
     legend            : buildLegend(edges),
-    truncatedNodeCount: limited.truncatedNodeCount
+    truncatedNodeCount: limited.truncatedNodeCount,
+    chapters          : chapterRows satisfies GraphChapter[],
+    codeStats         : buildCodeStats(edges)
   };
 });
 
 /**
- * 批量查询关系的首条证据引用。
+ * 批量查询关系的**全部**证据引用。
+ *
+ * 为什么返回数组：`evidence_spans` 对一条关系可以有多行（不同段落的依据），
+ * 只保留首条会丢信息 —— 详情卡需要把全部依据摊开，供用户核对模型判定。
  *
  * @param relationshipIds 关系 ID 列表
- * @returns 关系 ID → 引用文本
+ * @returns 关系 ID → 引用文本列表（按查询返回顺序，天然稳定）
  */
 async function loadEvidenceQuotes(
   relationshipIds: readonly string[]
-): Promise<ReadonlyMap<string, string>> {
+): Promise<ReadonlyMap<string, string[]>> {
   if (relationshipIds.length === 0) {
     return new Map();
   }
@@ -169,15 +206,47 @@ async function loadEvidenceQuotes(
     .from(evidenceSpans)
     .where(inArray(evidenceSpans.relationshipId, [...relationshipIds]));
 
-  const quotes = new Map<string, string>();
+  const quotes = new Map<string, string[]>();
   for (const row of rows) {
-    // 每条关系只保留首条引用，避免侧栏堆叠重复证据。
-    if (row.relationshipId === null || quotes.has(row.relationshipId)) {
+    // 实体提及证据的证据行 `relationship_id` 为 null，此处不涉及关系引用，跳过。
+    if (row.relationshipId === null) {
       continue;
     }
-    quotes.set(row.relationshipId, row.quote);
+    const list = quotes.get(row.relationshipId);
+    if (list === undefined) {
+      quotes.set(row.relationshipId, [row.quote]);
+    } else {
+      list.push(row.quote);
+    }
   }
   return quotes;
+}
+
+/**
+ * 按当前快照实算关系码统计（非全库）。
+ *
+ * 用途：矩阵维度必须只取「切片内真实出现的关系码」。
+ * 用全库统计会把切片内 0 条的码也带进来，形成空行空列。
+ *
+ * @param edges 当前快照的边
+ * @returns 按出现次数降序的关系码统计
+ */
+function buildCodeStats(edges: readonly GraphEdge[]): GraphCodeStat[] {
+  const counts = new Map<string, number>();
+  for (const edge of edges) {
+    counts.set(edge.typeCode, (counts.get(edge.typeCode) ?? 0) + 1);
+  }
+
+  // 以闭集定义为准取 label/category，保证与图例、配色一致；
+  // 闭集外的兜底码（category=4）也照常输出，不静默丢弃。
+  return RELATION_TYPES.filter((definition) => counts.has(definition.code))
+    .map((definition) => ({
+      code    : definition.code,
+      label   : definition.label,
+      category: definition.category,
+      count   : counts.get(definition.code) ?? 0
+    }))
+    .sort((left, right) => right.count - left.count);
 }
 
 /**

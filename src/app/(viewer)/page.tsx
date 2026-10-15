@@ -1,35 +1,42 @@
-import Link from "next/link";
 import { Suspense, use } from "react";
 
-
-import { PageContainer, PageHeader } from "@/components/layout/page-header";
-import { EmptyBooks, SkeletonCard } from "@/components/ui/states";
+import { PageContainer } from "@/components/layout/page-header";
+import type { BookCardData } from "@/components/library/book-card";
+import { LibraryHome } from "@/components/library/library-home";
+import { SkeletonCard } from "@/components/ui/states";
 import { listBooks, type BookListItem } from "@/server/modules/books/list-books";
 
 /**
  * 书库首页。
  *
  * RSC 边界：本页保持 Server Component，通过 `use()` + Suspense 消费作品列表；
- * 列表项只是链接与文本，不需要任何客户端状态，因此不引入 `"use client"`。
+ * 列表数据在服务端取好后注入 `LibraryHome`（Client Component，负责悬浮等交互）。
+ *
+ * 版式：与 v1 `wen-yuan` 首页 1:1（Hero 统计 + 书卡网格 + 页脚）。
  */
 
-/** 作品状态的中文标签。 */
-const STATUS_LABELS: Readonly<Record<BookListItem["status"], string>> = {
-  pending: "待解析",
-  parsing: "解析中",
-  ready  : "已就绪",
-  failed : "解析失败"
-};
+/**
+ * 把服务端 DTO 映射为书卡展示数据。
+ *
+ * 显式字段映射而非 `...book`：锁定前后端契约，避免后端新增字段无意透传到前端。
+ */
+function toBookCardData(book: BookListItem): BookCardData {
+  return {
+    id           : book.id,
+    title        : book.title,
+    author       : book.author,
+    status       : book.status,
+    chapterCount : book.chapterCount,
+    entityCount  : book.entityCount,
+    relationCount: book.relationCount
+  };
+}
 
 export default function LibraryPage() {
   const booksPromise = listBooks();
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="书库"
-        description="导入一部小说，自动解析人物与关系，生成可交互的人物关系图谱。"
-      />
+    <PageContainer fullWidth>
       <Suspense fallback={<LibrarySkeleton />}>
         <BookList booksPromise={booksPromise} />
       </Suspense>
@@ -45,43 +52,22 @@ interface BookListProps {
  * 作品列表（服务端）。
  *
  * @param props 由页面创建的取数 Promise
- * @returns 作品卡片列表；无数据时展示空态
+ * @returns 书库首页；无数据时由 `LibraryHome` 内部渲染空态
  */
 function BookList({ booksPromise }: BookListProps) {
   const items = use(booksPromise);
-
-  if (items.length === 0) {
-    return <EmptyBooks />;
-  }
-
-  return (
-    <ul className="book-list">
-      {items.map((book) => (
-        <li key={book.id} className="book-list-item">
-          <Link href={`/book/${book.id}`} className="book-list-link">
-            <h2 className="book-list-title">{book.title}</h2>
-            <p className="book-list-meta">
-              {book.author ?? "佚名"} · {book.chapterCount} 章
-            </p>
-            <p className="book-list-stats">
-              <span>{book.entityCount} 个实体</span>
-              <span>{book.relationCount} 条关系</span>
-              <span data-status={book.status}>{STATUS_LABELS[book.status]}</span>
-            </p>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
+  return <LibraryHome books={items.map(toBookCardData)} />;
 }
 
 /** 列表骨架屏。 */
 function LibrarySkeleton() {
   return (
-    <div className="book-list">
-      {Array.from({ length: 3 }, (_, index) => (
-        <SkeletonCard key={index} />
-      ))}
+    <div className="mx-auto max-w-[1440px] px-6 py-8">
+      <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 md:gap-6 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+        {Array.from({ length: 6 }, (_, index) => (
+          <SkeletonCard key={index} />
+        ))}
+      </div>
     </div>
   );
 }

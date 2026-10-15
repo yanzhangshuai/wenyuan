@@ -69,26 +69,55 @@ export function getEdgeColorForCategory(
 }
 
 /**
+ * 半径区间的默认值。
+ *
+ * ## 这些数字是怎么定出来的（不是拍脑袋）
+ *
+ * 实测某部 57 回长篇（844 个实体）的连接度分布：
+ * - **degree=0 占 71.8%**（606 个）—— 长篇小说里大量人物只出场一次、不与任何人成对，
+ *   它们构成画布的「底噪」；
+ * - degree=1 占 13.5%、degree=2 占 6.4%、degree=3 占 3.3% —— **1~3 度挤了 95% 的实体**；
+ * - 尾部：degree=13 有 3 个、17 有 1 个、**最大 38**（全书枢纽）。
+ *
+ * 旧值 `min=4 / max=18` 的问题是**枢纽不够大**：38 度的主角半径只有 18px，
+ * 与 3 度的配角（8.4px）差不到 2.2 倍，在一屏 300 个球里几乎读不出主次。
+ * 新值把上限抬到 30，并把「无关系」压到 3.2 —— 让 72% 的底噪真正退到背景，
+ * 把尺度让给有关系的 238 个实体。
+ */
+export const NODE_RADIUS_MIN = 3.2;
+export const NODE_RADIUS_MAX = 30;
+
+/**
+ * 平方根缩放的「满量程」参考连接度。
+ *
+ * 取 40（略高于实测最大值 38）：让全书枢纽正好接近而不顶到上限，
+ * 使「越长越接近上限」的梯度在头部仍然可读，而不是一到 30 度就封顶。
+ */
+export const NODE_RADIUS_REFERENCE_DEGREE = 40;
+
+/**
  * 计算节点半径。
  *
- * 采用平方根缩放而非线性：人物连接度分布长尾（主角可达数十、配角仅 1-2），
- * 线性映射会让主角大到遮挡画面、配角小到不可见。
+ * 采用平方根缩放而非线性：人物连接度分布长尾（实测 95% 的实体 ≤3 度、
+ * 而枢纽可达 38 度），线性映射会让枢纽大到遮挡画面、配角小到不可见。
  *
- * @param degree 连接度
- * @param options 半径区间
+ * 单调性保证：`degree` 增大 ⇒ 半径不减（`sqrt` 在 [0,∞) 上单调）。
+ *
+ * @param degree  连接度
+ * @param options 半径区间与参考度（默认见上方常量）
  * @returns 像素半径
  */
 export function computeNodeRadius(
   degree: number,
-  options: { min?: number; max?: number } = {}
+  options: { min?: number; max?: number; reference?: number } = {}
 ): number {
-  const min = options.min ?? 4;
-  const max = options.max ?? 18;
+  const min = options.min ?? NODE_RADIUS_MIN;
+  const max = options.max ?? NODE_RADIUS_MAX;
+  const reference = options.reference ?? NODE_RADIUS_REFERENCE_DEGREE;
   if (degree <= 0) {
     return min;
   }
-  // 以 30 连接度作为「接近上限」的参考值，超出后不再显著增大。
-  const normalized = Math.min(1, Math.sqrt(degree / 30));
+  const normalized = Math.min(1, Math.sqrt(degree / reference));
   return min + (max - min) * normalized;
 }
 

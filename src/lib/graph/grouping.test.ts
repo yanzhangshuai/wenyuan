@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_MAX_NODES,
+  NODE_RADIUS_MAX,
+  NODE_RADIUS_MIN,
   RELATION_GROUPS,
   computeNodeRadius,
   getEdgeColorForCategory,
@@ -59,7 +61,9 @@ describe("getEdgeColorForCategory", () => {
 
 describe("computeNodeRadius", () => {
   it("无连接时为最小值", () => {
-    expect(computeNodeRadius(0)).toBe(4);
+    expect(computeNodeRadius(0)).toBe(NODE_RADIUS_MIN);
+    // 负度是非法输入，但必须与 0 度同解，不得掉进 NaN。
+    expect(computeNodeRadius(-3)).toBe(NODE_RADIUS_MIN);
   });
 
   it("随连接度单调递增且不超过上限", () => {
@@ -69,12 +73,24 @@ describe("computeNodeRadius", () => {
       const current = radii[index] ?? 0;
       expect(current).toBeGreaterThanOrEqual(previous);
     }
-    expect(Math.max(...radii)).toBeLessThanOrEqual(18);
+    expect(Math.max(...radii)).toBeLessThanOrEqual(NODE_RADIUS_MAX);
+    // 超过参考度后封顶，不再增长（否则极端离群值会撑爆画布）。
+    expect(computeNodeRadius(200)).toBe(NODE_RADIUS_MAX);
   });
 
   it("采用平方根缩放：小连接度不会贴地不动", () => {
     // 线性映射下 degree=1 只会得到极小值；平方根应给出明显大于 min 的半径。
-    expect(computeNodeRadius(1)).toBeGreaterThan(5);
+    expect(computeNodeRadius(1)).toBeGreaterThan(NODE_RADIUS_MIN * 2);
+  });
+
+  it("按实测分布给出可读的主次差：全书枢纽应远大于 3 度配角", () => {
+    // 实测：某 57 回长篇最大 38 度。3 度与 38 度的半径比应足够拉开，
+    // 否则一屏数百个球里读不出主次（旧区间 min=4/max=18 只有约 2.2 倍）。
+    const sidekick = computeNodeRadius(3);
+    const hub = computeNodeRadius(38);
+    expect(hub / sidekick).toBeGreaterThan(2.5);
+    // 参考度取 40（略高于 38），使枢纽接近而不顶到上限。
+    expect(hub).toBeLessThan(NODE_RADIUS_MAX);
   });
 });
 

@@ -16,6 +16,6 @@
 export { THEME_IDS, THEME_OPTIONS } from "./constants";
 export type { ThemeId } from "./constants";
 
-// Per-theme tokens (faction colors, utilities)
-export { THEME_TOKENS, getFactionColorsForTheme, getEdgeTypeColorsForTheme } from "./tokens";
+// Per-theme tokens (edge colors, node colors, utilities)
+export { THEME_TOKENS, getEdgeTypeColorsForTheme, getNodeColorsForTheme } from "./tokens";
 export type { ThemeTokens } from "./tokens";

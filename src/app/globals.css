@@ -670,6 +670,685 @@ a[aria-current="page"],
     gap: 1rem;
   }
 
+  /* ── 图谱舞台（v1 版式：画布铺满视口 + 控件浮层） ──
+     整个舞台是「信息头 + 画布」两段式竖向 flex，画布吃掉剩余高度。
+     所有工具栏/图例/详情都绝对定位浮在画布之上，不挤压画布尺寸。 */
+  .graph-stage {
+    display: flex;
+    flex-direction: column;
+    /* 本页在 `(graph)` 路由组下，**没有全局顶栏** → 直接铺满视口，
+       不需要再减去 4rem。高度由父级 `h-dvh` 提供，这里再兜一层。 */
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background-color: var(--color-graph-bg, var(--color-background));
+    /* `isolation: isolate` 的作用是**收敛本舞台内部浮层的 z-index**（头部 30 / 时间轴 20 /
+       图例 10 等），使其不与舞台外部元素相互比较 —— 它**不是**用来把画布抬到主题背景层之上的。
+       （曾误以为它能压住 `fixed` 的主题背景层；实际那由 `.theme-background-host` 的负 z-index 解决。） */
+    isolation: isolate;
+  }
+
+  .graph-stage-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    /* v1 `h-14 px-5`。 */
+    gap: 0.75rem 1rem;
+    flex-shrink: 0;
+    /* 对齐 v1 GraphPageHeader：单行紧凑（h-14 = 3.5rem），毛玻璃融入画布。
+       🔑 v1 是 `h-14 px-5` —— **只有水平 padding**（1.25rem），垂直方向靠 `h-14`
+       居中撑开。此处用固定高度 + 零垂直 padding，避免内容高度把头部撑高。 */
+    height: 3.5rem;
+    padding: 0 1.25rem;
+    border-bottom: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+    background-color: color-mix(in oklch, var(--color-card) 70%, transparent);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    z-index: 30;
+  }
+
+  /* v1 `flex items-center gap-4`。 */
+  .graph-stage-heading {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+  }
+
+  /* 返回按钮：v1 是「ghost 按钮 + 图标 + 文案」，不是方形图标钮。 */
+  .graph-stage-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-shrink: 0;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+    text-decoration: none;
+    transition: color 160ms ease, background-color 160ms ease;
+  }
+
+  .graph-stage-back:hover {
+    color: var(--color-foreground);
+    background-color: color-mix(in oklch, var(--color-foreground) 8%, transparent);
+  }
+
+  /* 竖分隔线：v1 用 1px 高 5 的 bg-border/60 隔开「返回」与书籍信息。 */
+  .graph-stage-divider {
+    flex-shrink: 0;
+    width: 1px;
+    height: 1.25rem;
+    background-color: color-mix(in oklch, var(--color-border) 60%, transparent);
+  }
+
+  /* 书首字头像：主题主色淡底 + 主色字，与 v1 书籍头像一致。 */
+  .graph-stage-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.375rem;
+    font-family: var(--font-serif, inherit);
+    font-size: 0.875rem;
+    font-weight: 700;
+    background-color: color-mix(in oklch, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+    border: 1px solid color-mix(in oklch, var(--color-primary) 25%, transparent);
+  }
+
+  .graph-stage-titles {
+    min-width: 0;
+  }
+
+  .graph-stage-title {
+    margin: 0;
+    font-family: var(--font-serif, inherit);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .graph-stage-subtitle {
+    margin: 0;
+    margin-top: 0.125rem;
+    font-size: 0.625rem;
+    color: var(--color-muted-foreground);
+  }
+
+  /* 右侧主题切换：与左侧信息头对称收尾。 */
+  .graph-stage-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* v1 `hidden md:flex items-center gap-4`（中等屏以上才显示统计）。 */
+  .graph-stage-metrics {
+    display: none;
+    align-items: center;
+    gap: 1rem;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  @media (min-width: 48rem) {
+    .graph-stage-metrics {
+      display: flex;
+    }
+  }
+
+  /* v1 `flex items-center gap-1.5 text-xs text-muted-foreground`。 */
+  .graph-stage-metric {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .graph-stage-metric dt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .graph-stage-metric dd {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 切片口径下的「/ 总数」，与主数字同号但更淡。 */
+  .graph-stage-metric-total {
+    opacity: 0.7;
+  }
+
+  /* 画布容器：填满头部以下的全部空间，是浮层的定位参照。 */
+  .graph-stage-canvas {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* 图例浮层：左下角，半透明卡片。
+     ⚠️ `bottom` 必须让开底部章节时间轴（`.graph-stage-timeline` 高约 3.25rem，
+     且 z-index 20 高于这里的 10）——否则图例最后几行会被时间轴永久盖住。
+     🔑 几何逐项对齐 v1 `graph-legend` 的 Tailwind 类：
+     `absolute bottom-16 left-4 z-10 rounded-xl p-3 text-xs`，
+     内联 `minWidth:132 / maxHeight:40vh / overflowY:auto`，
+     底色 `color-mix(in oklch, var(--card) 80%, transparent)` + `blur(12px)`，
+     边 `color-mix(in oklch, var(--border) 50%, transparent)`。 */
+  .graph-stage-legend {
+    position: absolute;
+    left: 1rem;
+    bottom: 4rem;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    /* v1 的 `space-y-1.5` → 0.375rem。 */
+    gap: 0.375rem;
+    min-width: 8.25rem;
+    max-height: 40vh;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0.75rem;
+    list-style: none;
+    border: 1px solid color-mix(in oklch, var(--color-border) 50%, transparent);
+    border-radius: 0.75rem;
+    background-color: color-mix(in oklch, var(--color-card) 80%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-size: 0.75rem;
+    /* v1 是 `pointer-events-none`：图例不可交互，不阻挡画布事件。
+       v3 需要点击分组筛选 → 保留 `auto`，这是刻意的功能增强。 */
+    pointer-events: auto;
+  }
+
+  /* 图例标题：v1 `mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground`。 */
+  .graph-stage-legend-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+  }
+
+  /* 「节点状态」分隔区：v1 `mt-3 space-y-1.5 pt-2` + 顶部 40% 边线。 */
+  .graph-stage-legend-status {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid color-mix(in oklch, var(--color-border) 40%, transparent);
+  }
+
+  /* 状态条目：v1 `flex items-center gap-2 text-muted-foreground`。 */
+  .graph-stage-legend-status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-muted-foreground);
+  }
+
+  /* 已校对圆点：v1 `h-3 w-3 rounded-full` + verified-glow 底与光晕。 */
+  .graph-stage-legend-status-dot {
+    flex-shrink: 0;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 999px;
+    background: var(--color-graph-verified-glow);
+    box-shadow: 0 0 4px var(--color-graph-verified-glow);
+  }
+
+  /* 待校对圆点：虚线描边空心圆。 */
+  .graph-stage-legend-status-dot-pending {
+    flex-shrink: 0;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 999px;
+    border: 1px dashed color-mix(in oklch, var(--color-muted-foreground) 50%, transparent);
+  }
+
+  /* =========================================
+     左上工具栏（对齐 v1 `graph-toolbar`）
+     =========================================
+     🔑 逐字对齐 v1 `graph-toolbar.tsx` 的 Tailwind 类：
+     容器 `absolute left-4 top-4 z-10 flex flex-col gap-2`；
+     图标列 `flex flex-col gap-1 rounded-lg border border-border/60 bg-card/80
+     backdrop-blur-md p-1 shadow-lg`；
+     按钮 `flex items-center justify-center rounded-md p-2 transition-colors hover:bg-accent`
+     ＋ 激活态 `bg-accent text-accent-foreground` / 常态 `text-muted-foreground`；
+     分隔线 `my-0.5 h-px bg-border/60`；
+     面板 `w-64 rounded-lg border border-border/60 bg-card/80 backdrop-blur-md p-3 shadow-lg`。 */
+  .graph-toolbar {
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: calc(100% - 2rem);
+  }
+
+  /* v1 图标列：`rounded-lg border border-border/60 bg-card/80 backdrop-blur-md p-1 shadow-lg`。 */
+  .graph-toolbar-icons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    align-self: flex-start;
+    padding: 0.25rem;
+    border: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklch, var(--color-card) 80%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+  }
+
+  /* v1 工具按钮：`rounded-md p-2`，常态 muted、hover/激活 accent。 */
+  .graph-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background-color: transparent;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+
+  .graph-toolbar-btn:hover {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+
+  /* 激活态与 hover 同色 —— v1 写 `bg-accent text-accent-foreground`。 */
+  .graph-toolbar-btn[data-active="true"] {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+
+  /* v1 `my-0.5 h-px bg-border/60`。 */
+  .graph-toolbar-divider {
+    height: 1px;
+    margin: 0.125rem 0;
+    background-color: color-mix(in oklch, var(--color-border) 60%, transparent);
+  }
+
+  /* v1 展开面板：`w-64 rounded-lg border border-border/60 bg-card/80 backdrop-blur-md p-3 shadow-lg`。 */
+  .graph-toolbar-panel {
+    width: 16rem;
+    max-width: 100%;
+    padding: 0.75rem;
+    border: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklch, var(--color-card) 80%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+  }
+
+  /* v1 `mb-2 flex items-center justify-between`。 */
+  .graph-toolbar-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  /* v1 `text-sm font-medium text-foreground`。 */
+  .graph-toolbar-panel-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-foreground);
+  }
+
+  /* v1 关闭按钮：`rounded p-0.5 text-muted-foreground hover:text-foreground`。 */
+  .graph-toolbar-panel-close {
+    display: inline-flex;
+    padding: 0.125rem;
+    border: 0;
+    border-radius: 0.25rem;
+    background-color: transparent;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    transition: color 140ms ease;
+  }
+
+  .graph-toolbar-panel-close:hover {
+    color: var(--color-foreground);
+  }
+
+  /* v1 面板内小标题：`mb-1 text-xs text-muted-foreground`。 */
+  .graph-toolbar-panel-label {
+    margin: 0 0 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .graph-toolbar-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* v1 `flex flex-wrap gap-1`。 */
+  .graph-toolbar-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  /* v1 分组芯片：`rounded-sm px-2 py-0.5 text-xs`，
+     选中 `bg-primary text-primary-foreground`，未选 `bg-muted text-muted-foreground`。
+     ⚠️ v1 写 `text-(--color-primary-fg)`（该变量未定义）→ 此处用 `--color-primary-foreground`。 */
+  .graph-toolbar-chip {
+    padding: 0.125rem 0.5rem;
+    border: 0;
+    border-radius: 0.25rem;
+    background-color: var(--color-muted);
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+
+  .graph-toolbar-chip[data-selected="true"] {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  /* v1 搜索/路径面板的输入框：`h-8 text-sm`（Input 组件基础样式简化到纯 CSS）。 */
+  .graph-toolbar-input {
+    flex: 1;
+    min-width: 0;
+    height: 2rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--color-input, var(--color-border));
+    border-radius: 0.375rem;
+    background-color: transparent;
+    font-size: 0.875rem;
+    color: var(--color-foreground);
+    outline: none;
+  }
+
+  .graph-toolbar-input::placeholder {
+    color: var(--color-muted-foreground);
+  }
+
+  .graph-toolbar-input:focus-visible {
+    border-color: var(--color-ring, var(--color-primary));
+  }
+
+  /* v1 主按钮（`Button size="sm"`）：h-8、圆角、primary 底。 */
+  .graph-toolbar-submit {
+    flex-shrink: 0;
+    height: 2rem;
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background-color: var(--color-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-primary-foreground);
+    cursor: pointer;
+    transition: background-color 140ms ease;
+  }
+
+  .graph-toolbar-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* v1 `flex gap-2`（搜索）与 `flex flex-col gap-2`（路径）。 */
+  .graph-toolbar-search {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .graph-toolbar-path {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  /* v1 `flex flex-col gap-1`。 */
+  .graph-toolbar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  /* v1 列表项：`rounded-md px-2 py-1 text-left text-sm`，
+     选中 `bg-primary text-primary-foreground`，未选 `text-foreground hover:bg-muted`。 */
+  .graph-toolbar-list-item {
+    padding: 0.25rem 0.5rem;
+    border: 0;
+    border-radius: 0.375rem;
+    background-color: transparent;
+    font-size: 0.875rem;
+    color: var(--color-foreground);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+
+  .graph-toolbar-list-item:hover {
+    background-color: var(--color-muted);
+  }
+
+  .graph-toolbar-list-item[data-selected="true"] {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  /* 视图切换浮层：右上角，分段控件样式。
+     🚨 z-index 必须**高于矩阵详情抽屉**（`.graph-stage-drawer`，z-index 25）：
+     两者都以 `right: 1rem; top: 1rem` 为锚点，若被抽屉盖住，用户进入矩阵视图后
+     就**看不到也点不到**视图切换按钮 —— 即「进得去、出不来」。
+     视觉语言对齐 v1 `graph-toolbar`：`rounded-lg border-border/60 bg-card/80 blur-md shadow-lg`。 */
+  .graph-stage-modes {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    z-index: 30;
+    display: inline-flex;
+    gap: 0.125rem;
+    padding: 0.25rem;
+    border: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklch, var(--color-card) 80%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+  }
+
+  /* 截断提示：顶部居中细条。
+     ⚠️ 左上工具栏只占约 2.75rem 宽（一列图标），比原来的 20rem 搜索框窄得多 ——
+     因此细条**回归真居中**（`left: 50%`）即可，不需要再让位；
+     但窄屏下仍直接隐藏，避免与右上切换条挤在一起叠字。 */
+  .graph-stage-notice {
+    position: absolute;
+    left: 50%;
+    top: 0.75rem;
+    z-index: 15;
+    transform: translateX(-50%);
+    max-width: calc(100% - 20rem);
+    margin: 0;
+    padding: 0.375rem 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background-color: color-mix(in oklch, var(--color-card) 88%, transparent);
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* 工具栏 ≈ 2.75rem + 右侧切换条 ≈ 10rem + 呼吸 → 低于 34rem 就藏提示。 */
+  @media (max-width: 34rem) {
+    .graph-stage-notice {
+      display: none;
+    }
+  }
+
+  /* =========================================
+     底部章节时间轴（对齐 v1 `chapter-timeline`）
+     ========================================= */
+  .graph-stage-timeline {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    /* 层级：图例(10) < 时间轴(20) < 抽屉(25) < 切换条/搜索(30)。
+       时间轴必须高于图例 —— 它横跨整条底边，一旦被图例压住就会断成两截。 */
+    z-index: 20;
+    /* v1 `px-6 py-3` → 1.5rem / 0.75rem。 */
+    padding: 0.75rem 1.5rem;
+    border-top: 1px solid color-mix(in oklch, var(--color-border) 60%, transparent);
+    background-color: color-mix(in oklch, var(--color-card) 80%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* v1 `mx-auto flex max-w-4xl items-center gap-3` → max-w 56rem / gap 0.75rem。 */
+  .graph-stage-timeline-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 56rem;
+    margin: 0 auto;
+  }
+
+  .graph-stage-timeline-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    flex-shrink: 0;
+  }
+
+  /* v1 用 shadcn `<Button variant="ghost" size="icon" className="h-7 w-7">`：
+     1.75rem 方形、圆角继承 `--radius`(0.375rem)、透明底、muted 图标。 */
+  .graph-stage-timeline-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 0;
+    border-radius: var(--radius);
+    background-color: transparent;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+
+  /* v1 ghost 按钮的 hover 是 `hover:bg-accent hover:text-accent-foreground`（原色，不稀释）。 */
+  .graph-stage-timeline-btn:hover:not(:disabled) {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+
+  .graph-stage-timeline-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* v1 `shrink-0 text-xs font-medium text-muted-foreground min-w-[60px]`。 */
+  .graph-stage-timeline-label {
+    flex-shrink: 0;
+    min-width: 3.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 滑块轨道：原生 input 透明覆盖在自绘轨道上，保证跨浏览器一致。 */
+  .graph-stage-timeline-track {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 1rem;
+  }
+
+  /* v1：`absolute top-1/2 -translate-y-1/2 h-1 rounded-full bg-muted`。 */
+  .graph-stage-timeline-rail {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: 0.25rem;
+    border-radius: 999px;
+    background-color: var(--color-muted);
+    transform: translateY(-50%);
+  }
+
+  .graph-stage-timeline-fill {
+    height: 100%;
+    border-radius: 999px;
+    background-color: var(--color-primary);
+    transition: width 100ms linear;
+  }
+
+  .graph-stage-timeline-input {
+    position: relative;
+    width: 100%;
+    height: 1rem;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .graph-stage-timeline-count {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 拖动时浮出的章节气泡：v1 `-top-8 rounded bg-primary px-2 py-0.5 text-xs`，
+     文字用主色前景（v1 写的是 `text-(--color-primary-fg)`，但该变量在两版主题里
+     **都未定义** —— 实际生效的是继承色。这里显式取 `--color-primary-foreground`，
+     把 v1 的静默 bug 修正为可读的对比色）。 */
+  .graph-stage-timeline-bubble {
+    position: absolute;
+    top: -2rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateX(-50%);
+  }
+
+  /* =========================================
+     人物搜索：已并入左上工具栏的「搜索」面板
+     =========================================
+     v1 把搜索藏在工具栏图标后面；v3 现在也这样做（见 `.graph-toolbar-*`），
+     因此原先的常驻搜索浮层样式（`.graph-stage-search*`）整段移除。
+     搜索能力一个未减，只是不再占据独立浮层。 */
+
   .graph-view-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -679,7 +1358,7 @@ a[aria-current="page"],
     padding: 0.75rem 1rem;
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    background-color: color-mix(in oklab, var(--color-card) 92%, transparent);
+    background-color: color-mix(in oklch, var(--color-card) 92%, transparent);
   }
 
   .graph-view-stats {
@@ -704,40 +1383,57 @@ a[aria-current="page"],
     list-style: none;
   }
 
-  .graph-legend-item {
-    display: inline-flex;
-    align-items: center;
+  /* 图例内的关系类型列表：`space-y-1.5`（0.375rem）竖排，去掉列表默认样式。 */
+  .graph-stage-legend-list {
+    display: flex;
+    flex-direction: column;
     gap: 0.375rem;
-    padding: 0.25rem 0.625rem;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* 图例项：视觉照 v1（静态文字 + 色条），但保留点击筛选能力。
+     v1 是 `flex items-center gap-2` 的静态 div；此处改用 button 以承载点击，
+     因而必须抹平浏览器按钮默认样式（无边框、无底色、无 padding）。 */
+  .graph-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0.25rem;
     background-color: transparent;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: var(--color-muted-foreground);
+    text-align: left;
     cursor: pointer;
-    transition: opacity 160ms ease, border-color 160ms ease, color 160ms ease;
+    transition: opacity 160ms ease;
   }
 
-  .graph-legend-item:hover {
-    border-color: var(--color-ring);
-    color: var(--color-foreground);
-  }
-
-  /* 未激活的分组降低不透明度，而非隐藏 —— 保留图例布局稳定。 */
+  /* 未激活的分组降低不透明度，而非隐藏 —— 保留图例布局稳定。
+     ⚠️ v1 图例本无 hover 变色（`pointer-events-none`），此处也不加，
+     以免与「点击筛选」的激活态语义混淆。 */
   .graph-legend-item[data-active="false"] {
     opacity: 0.45;
   }
 
+  /* 色条：对齐 v1（宽 24、高 2 的圆角「线」隐喻，而不是圆点）。 */
   .graph-legend-swatch {
-    width: 0.625rem;
-    height: 0.625rem;
+    width: 1.5rem;
+    height: 0.125rem;
     border-radius: 999px;
     flex-shrink: 0;
   }
 
-  .graph-legend-count {
-    font-variant-numeric: tabular-nums;
-    opacity: 0.7;
+  /* 标签：v1 `truncate max-w-[100px]` → 6.25rem 上限 + 省略号。 */
+  .graph-legend-label {
+    min-width: 0;
+    max-width: 6.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .graph-view-notice {
@@ -746,42 +1442,54 @@ a[aria-current="page"],
     color: var(--color-muted-foreground);
   }
 
-  /* 画布与详情面板并排；窄屏时堆叠，避免侧栏挤压画布。 */
-  .graph-view-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 1rem;
-    align-items: stretch;
-  }
-
-  @media (max-width: 1024px) {
-    .graph-view-body {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-
+  /* 画布：铺满父容器（不再固定 70vh），无边框圆角 —— 由舞台本身界定边界。 */
   .graph-canvas {
     position: relative;
-    height: 70vh;
-    min-height: 480px;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    background-color: var(--color-graph-bg, var(--color-card));
     /* 主题背景的装饰层是 fixed 定位，此处显式建立 stacking context 以保证画布在上层。 */
     isolation: isolate;
   }
 
+  /* 详情面板：从右侧滑出的悬浮抽屉（「节点详情默认收起」——
+     未选中节点时该元素完全不渲染，选中后覆盖在画布右侧）。 */
   .graph-detail-panel {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    bottom: 1rem;
+    z-index: 25;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    max-height: 70vh;
+    width: min(340px, calc(100% - 2rem));
     overflow-y: auto;
     padding: 1rem;
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    background-color: color-mix(in oklab, var(--color-card) 92%, transparent);
+    background-color: color-mix(in oklch, var(--color-card) 94%, transparent);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: graph-detail-slide-in 220ms ease-out;
+  }
+
+  @keyframes graph-detail-slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .graph-detail-panel {
+      animation: none;
+    }
   }
 
   .graph-detail-panel[data-empty="true"] {
@@ -849,7 +1557,7 @@ a[aria-current="page"],
     padding: 0.75rem;
     border: 1px solid var(--color-border);
     border-radius: 0.375rem;
-    background-color: color-mix(in oklab, var(--color-background) 60%, transparent);
+    background-color: color-mix(in oklch, var(--color-background) 60%, transparent);
   }
 
   .graph-detail-relation-head {
@@ -900,6 +1608,15 @@ a[aria-current="page"],
     color: var(--color-muted-foreground);
   }
 
+  .graph-detail-quotes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
   .graph-detail-quote {
     margin: 0;
     padding-left: 0.625rem;
@@ -908,6 +1625,539 @@ a[aria-current="page"],
     font-size: 0.8125rem;
     line-height: 1.7;
     color: var(--color-muted-foreground);
+  }
+
+  /* 详情面板 → 人物档案页入口 */
+  .graph-detail-profile-link {
+    align-self: flex-start;
+    font-size: 0.8125rem;
+    color: var(--color-primary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 160ms ease;
+  }
+
+  .graph-detail-profile-link:hover {
+    border-bottom-color: currentColor;
+  }
+
+  /* =========================================
+     视图切换（全图 / 聚焦 / 矩阵）
+     ========================================= */
+  /* 切换条按钮：对齐 v1 `graph-toolbar` 的按钮语言 ——
+     常态 `text-muted-foreground`，hover `bg-accent text-accent-foreground`，
+     激活态同 hover（v1 的 `bg-accent text-accent-foreground`）。 */
+  .graph-stage-mode {
+    padding: 0.375rem 0.75rem;
+    border: none;
+    border-radius: 0.375rem;
+    background-color: transparent;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+
+  .graph-stage-mode:hover {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+
+  .graph-stage-mode[data-active="true"] {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+
+  /* 矩阵视图：铺满画布区，内容水平居中并垂直居中，避免「内容挤在上半屏」。 */
+  .graph-stage-matrix {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    height: 100%;
+    padding: 2rem 1rem;
+    overflow: auto;
+    background-color: color-mix(in oklch, var(--color-card) 60%, transparent);
+  }
+
+  .graph-stage-drawer {
+    position: absolute;
+    right: 1rem;
+    /* 从视图切换条下方开始（1rem 间距 + 切换条高度 ≈ 2.4rem），
+       保证「全图/聚焦/矩阵」三个按钮在矩阵视图下依然可见可点。 */
+    top: 3.5rem;
+    bottom: 1rem;
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: min(380px, calc(100% - 2rem));
+    overflow-y: auto;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklch, var(--color-card) 94%, transparent);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .graph-stage-drawer-hint {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--color-muted-foreground);
+  }
+
+  /* =========================================
+     关系矩阵
+     ========================================= */
+  .graph-view-matrix {
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklch, var(--color-card) 92%, transparent);
+    overflow-x: auto;
+  }
+
+  .rel-matrix {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .rel-matrix[data-empty="true"] {
+    align-items: center;
+    padding: 2rem 0;
+  }
+
+  .rel-matrix-empty,
+  .rel-matrix-hint {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--color-muted-foreground);
+  }
+
+  .rel-matrix-table {
+    border-collapse: separate;
+    border-spacing: 2px;
+    margin: 0 auto;
+  }
+
+  .rel-matrix-corner {
+    width: 4.5rem;
+  }
+
+  .rel-matrix-colhead,
+  .rel-matrix-rowhead {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    white-space: nowrap;
+  }
+
+  .rel-matrix-colhead {
+    padding: 0 0.25rem 0.25rem;
+    text-align: center;
+  }
+
+  .rel-matrix-colhead span {
+    display: inline-block;
+    max-width: 3.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+
+  .rel-matrix-rowhead {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.375rem;
+    padding-right: 0.5rem;
+    text-align: right;
+  }
+
+  .rel-matrix-swatch {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .rel-matrix-cellwrap {
+    padding: 0;
+  }
+
+  /* 只渲染上三角，下三角留空格 —— 保持表格对齐但不重复信息。 */
+  .rel-matrix-mirror {
+    background-color: color-mix(in oklch, var(--color-muted) 25%, transparent);
+    border-radius: 0.25rem;
+  }
+
+  .rel-matrix-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+    background-color: color-mix(in oklch, var(--color-muted) 35%, transparent);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    transition: border-color 140ms ease, transform 140ms ease;
+  }
+
+  .rel-matrix-cell[data-empty="true"] {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  .rel-matrix-cell:not([data-empty="true"]):hover {
+    border-color: var(--color-ring);
+    transform: scale(1.06);
+  }
+
+  .rel-matrix-cell[data-active="true"] {
+    border-color: var(--color-ring);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-ring) 45%, transparent);
+  }
+
+  /* =========================================
+     矩阵详情卡
+     ========================================= */
+  .matrix-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .matrix-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .matrix-detail-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .matrix-detail-meta,
+  .matrix-detail-hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--color-muted-foreground);
+  }
+
+  .matrix-detail-close {
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: transparent;
+    color: var(--color-muted-foreground);
+    font-size: 1.125rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .matrix-detail-close:hover {
+    color: var(--color-foreground);
+    border-color: var(--color-ring);
+  }
+
+  .matrix-detail-pairs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .matrix-detail-pair {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: color-mix(in oklch, var(--color-background) 60%, transparent);
+  }
+
+  .matrix-detail-pairname {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .matrix-detail-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .matrix-detail-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.0625rem 0.4375rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .matrix-detail-chip-dot {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .matrix-detail-edges {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .matrix-detail-edge {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .matrix-detail-edgemeta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.6875rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .matrix-detail-edgetype {
+    color: var(--color-foreground);
+  }
+
+  .matrix-detail-edgestatus {
+    padding: 0.0625rem 0.375rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+  }
+
+  .matrix-detail-noquote {
+    margin: 0;
+    font-size: 0.6875rem;
+    color: var(--color-muted-foreground);
+    opacity: 0.8;
+  }
+
+  .matrix-detail-quotes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .matrix-detail-quote {
+    margin: 0;
+    padding-left: 0.5rem;
+    border-left: 2px solid var(--color-border);
+    font-family: var(--font-serif, inherit);
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: var(--color-muted-foreground);
+  }
+
+  .matrix-detail-more {
+    align-self: flex-start;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: transparent;
+    font-size: 0.75rem;
+    color: var(--color-primary);
+    cursor: pointer;
+  }
+
+  .matrix-detail-more:hover {
+    border-color: var(--color-ring);
+  }
+
+  /* =========================================
+     聚焦视图
+     ========================================= */
+  .focus-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklch, var(--color-card) 92%, transparent);
+  }
+
+  .focus-view[data-empty="true"] {
+    align-items: center;
+  }
+
+  .focus-view-hint {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--color-muted-foreground);
+  }
+
+  .focus-view-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .focus-view-name {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .focus-view-meta {
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .focus-view-relations {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .focus-view-relation {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: color-mix(in oklch, var(--color-background) 60%, transparent);
+  }
+
+  .focus-view-relation-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+  }
+
+  .focus-view-swatch {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .focus-view-type {
+    color: var(--color-foreground);
+  }
+
+  .focus-view-code,
+  .focus-view-chapter {
+    color: var(--color-muted-foreground);
+  }
+
+  .focus-view-counterpart {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    align-self: flex-start;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    cursor: pointer;
+  }
+
+  .focus-view-counterpart-degree {
+    font-size: 0.6875rem;
+    font-weight: 400;
+    color: var(--color-muted-foreground);
+  }
+
+  .focus-view-evidence {
+    margin: 0;
+    font-size: 0.6875rem;
+    line-height: 1.6;
+    color: var(--color-muted-foreground);
+  }
+
+  .focus-view-picker {
+    width: 100%;
+  }
+
+  .focus-view-picker-label {
+    margin: 0 0 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .focus-view-picker-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .focus-view-picker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background-color: transparent;
+    font-size: 0.8125rem;
+    color: var(--color-foreground);
+    cursor: pointer;
+  }
+
+  .focus-view-picker-item:hover {
+    border-color: var(--color-ring);
+  }
+
+  .focus-view-picker-degree {
+    font-size: 0.6875rem;
+    color: var(--color-muted-foreground);
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -936,7 +2186,7 @@ a[aria-current="page"],
     padding: 1.25rem;
     border: 1px solid var(--color-border);
     border-radius: 0.5rem;
-    background-color: color-mix(in oklab, var(--color-card) 92%, transparent);
+    background-color: color-mix(in oklch, var(--color-card) 92%, transparent);
     color: inherit;
     text-decoration: none;
     transition: border-color 160ms ease, transform 160ms ease;
@@ -977,5 +2227,283 @@ a[aria-current="page"],
 
   .work-list-stats [data-status="failed"] {
     color: var(--color-destructive);
+  }
+}
+
+/* =========================================
+   人物档案页
+   -----------------------------------------
+   第一期范围：第 1 层事迹时间线 + 第 2 层关系时间轴。
+   颜色一律走主题令牌，四主题下观感一致。
+   ========================================= */
+@layer components {
+  .profile-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .profile-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background-color: color-mix(in oklch, var(--color-card) 92%, transparent);
+  }
+
+  .profile-header-main {
+    min-width: 0;
+  }
+
+  .profile-name {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .profile-meta {
+    margin: 0.375rem 0 0;
+    font-size: 0.875rem;
+    color: var(--color-muted-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .profile-aliases {
+    margin: 0.375rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .profile-header-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .profile-density {
+    padding: 0.1875rem 0.625rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .profile-density[data-density="rich"] {
+    color: var(--color-primary);
+    border-color: color-mix(in oklch, var(--color-primary) 45%, transparent);
+  }
+
+  .profile-graph-link {
+    font-size: 0.8125rem;
+    color: var(--color-primary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 160ms ease;
+  }
+
+  .profile-graph-link:hover {
+    border-bottom-color: currentColor;
+  }
+
+  .profile-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .profile-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .profile-section-count {
+    padding: 0.0625rem 0.4375rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 400;
+    color: var(--color-muted-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .profile-empty,
+  .profile-density-note {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    color: var(--color-muted-foreground);
+  }
+
+  /* 关系时间轴 */
+  .profile-relations {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .profile-relation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: color-mix(in oklch, var(--color-background) 60%, transparent);
+    font-size: 0.8125rem;
+  }
+
+  .profile-relation-swatch {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .profile-relation-group {
+    color: var(--color-muted-foreground);
+  }
+
+  .profile-relation-code {
+    padding: 0.0625rem 0.375rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    color: var(--color-foreground);
+  }
+
+  .profile-relation-counterpart {
+    font-weight: 500;
+    color: var(--color-foreground);
+  }
+
+  .profile-relation-range {
+    font-size: 0.75rem;
+    color: var(--color-muted-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .profile-relation-quote {
+    flex-basis: 100%;
+    font-family: var(--font-serif, inherit);
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: var(--color-muted-foreground);
+  }
+
+  /* 事迹时间线 */
+  .deed-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .deed-chapter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--color-border);
+  }
+
+  .deed-chapter-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .deed-chapter-ordinal {
+    color: var(--color-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .deed-chapter-name {
+    font-weight: 400;
+    color: var(--color-muted-foreground);
+  }
+
+  .deed-chapter-count {
+    font-size: 0.6875rem;
+    font-weight: 400;
+    color: var(--color-muted-foreground);
+  }
+
+  .deed-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .deed-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .deed-surface {
+    align-self: flex-start;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 0.25rem;
+    background-color: color-mix(in oklch, var(--color-muted) 45%, transparent);
+    font-size: 0.6875rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .deed-text {
+    margin: 0;
+    font-family: var(--font-serif, inherit);
+    font-size: 0.8125rem;
+    line-height: 1.8;
+    color: var(--color-muted-foreground);
+  }
+
+  /* 命中片段：只加底色与轻微加重，不改变字号避免行内跳动。 */
+  .deed-hit {
+    padding: 0 0.125rem;
+    border-radius: 0.125rem;
+    background-color: color-mix(in oklch, var(--color-primary) 22%, transparent);
+    color: var(--color-foreground);
+    font-weight: 600;
+  }
+
+  .deed-more {
+    align-self: flex-start;
+    padding: 0.1875rem 0.625rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: transparent;
+    font-size: 0.75rem;
+    color: var(--color-primary);
+    cursor: pointer;
+  }
+
+  .deed-more:hover {
+    border-color: var(--color-ring);
   }
 }
