@@ -3,6 +3,7 @@ import { normalizeName } from "@/lib/text";
 import type { EntityType, NameType } from "../schemas";
 
 import { isStopWord } from "./dictionary";
+import { isProperNameForm } from "./name-form";
 
 /**
  * P5 实体归并与别名护栏（零 LLM 成本）。
@@ -242,7 +243,22 @@ class UnionFind {
 }
 
 /**
- * 选择规范名：优先出现次数多者；次数相同取较短者（短名更接近本名而非敬称）。
+ * 选择规范名：**优先专名**；同层内按「出现次数多者」，次数相同取较短者。
+ *
+ * ## 为什么把「形态」提到「频次」之前
+ *
+ * 原实现只按频次选（同频次才取短名），而书里对人物的**称谓**出现次数
+ * **必然多于**本名 ——《儒林外史》「马二先生」全书几十次、「马纯上」几次
+ * ⇒ 规范名落成敬称。实测 428 个人物里 **18 个**如此，且本名**已在别名里**。
+ *
+ * ## 分层而非替换（关键）
+ *
+ * 先按「是否称谓形式」把候选键分两层，**只在存在专名时**收窄到专名层；
+ * 若候选**全是**称谓（如「三公子」），则**回退**到原逻辑。
+ * 这样 `isHonorificForm` **漏收**的后果只是「少修一个」，绝不会「改错一个」。
+ *
+ * ⚠️ 只改变「选中哪个键作为显示名」，**不改变成员键集合** ⇒
+ * 实体/关系/提及的图结构完全不变（`aliases` 会自动把落选的原规范名收进去）。
  *
  * @param keys 候选归一化键
  * @param frequency 名字频次表
@@ -252,10 +268,13 @@ function pickCanonicalKey(
   keys: readonly string[],
   frequency: ReadonlyMap<string, number>
 ): string {
+  const proper = keys.filter((key) => isProperNameForm(key));
+  const pool = proper.length > 0 ? proper : keys;
+
   let best = "";
   let bestFrequency = -1;
 
-  for (const key of keys) {
+  for (const key of pool) {
     const current = frequency.get(key) ?? 0;
     if (current > bestFrequency || (current === bestFrequency && key.length < best.length)) {
       best = key;

@@ -91,6 +91,36 @@ describe("mergeEntities", () => {
     expect(outcome.entities[0]?.aliases).toEqual(["范老爷"]);
   });
 
+  it("规范名优先取专名：即使称谓的频次远高于本名（批 65）", () => {
+    // 实测场景：《儒林外史》里「马二先生」全书出现次数远多于本名「马纯上」。
+    // 旧逻辑（纯频次优先）会把规范名落成敬称 —— 这正是用户报的缺陷。
+    const outcome = mergeEntities({
+      entities     : [{ canonical: "马纯上", type: "PERSON", aliases: ["马二先生"] }],
+      nameFrequency: new Map<string, number>([
+        ["马二先生", 99],
+        ["马纯上", 3]
+      ])
+    });
+
+    expect(outcome.entities).toHaveLength(1);
+    expect(outcome.entities[0]?.canonical).toBe("马纯上");
+    // 落选的原称谓自动进入别名，信息不丢失。
+    expect(outcome.entities[0]?.aliases).toEqual(["马二先生"]);
+  });
+
+  it("候选**全是**称谓时回退到频次逻辑（分层而非替换）", () => {
+    // 「三公子」这类在原文里只有称谓、没有本名 —— 不得因为分层而选不出东西。
+    const outcome = mergeEntities({
+      entities     : [{ canonical: "三公子", type: "PERSON", aliases: ["三老爷"] }],
+      nameFrequency: new Map<string, number>([
+        ["三老爷", 50],
+        ["三公子", 5]
+      ])
+    });
+
+    expect(outcome.entities[0]?.canonical).toBe("三老爷");
+  });
+
   it("归一化后相同的名字合并（内部空白）", () => {
     const outcome = mergeEntities({
       entities: [
