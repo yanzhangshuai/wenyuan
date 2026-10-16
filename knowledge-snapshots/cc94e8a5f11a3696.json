@@ -1,0 +1,9 @@
+{
+  "_comment": "批次 2（2026-10-16）：检索「儒林外史 牛浦」的真实结果。",
+  "query": "儒林外史 牛浦",
+  "provider": "manual-websearch-2026-10-16",
+  "hits": [
+    { "title": "牛浦郎 - 百度百科", "url": "https://baike.baidu.com/item/%E7%89%9B%E6%B5%A6%E9%83%8E/1821956", "snippet": "牛浦郎是《儒林外史》中塑造的典型反面人物，原本是市井少年，对读书有强烈兴趣但品行不端。他在甘露庵偷钱买书时偶然获得已故诗人牛布衣的诗稿，遂冒用其身份四处行骗。" },
+    { "title": "牛浦郎，冒名 ___，因此改名牛浦，字布衣 - 百度教育", "url": "https://easylearn.baidu.com/edu-page/tiangong/questiondetail?id=1873236177996204784&fr=search", "snippet": "牛浦郎在庵里读书时偷看了牛布衣留下的诗集，因二人同姓，便冒名牛布衣，改名牛浦，字布衣。" }
+  ]
+}

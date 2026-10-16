@@ -1,0 +1,9 @@
+{
+  "_comment": "批次 2（2026-10-16）：检索「儒林外史 杨执中」的真实结果。",
+  "query": "儒林外史 杨执中",
+  "provider": "manual-websearch-2026-10-16",
+  "hits": [
+    { "title": "杨执中 - 百度百科", "url": "https://baike.baidu.com/item/%E6%9D%A8%E6%89%A7%E4%B8%AD/1457520", "snippet": "杨执中，名允，是清代吴敬梓小说《儒林外史》（第九至十三回）中的虚构角色，原型考证为清代诗人王藻。" },
+    { "title": "在《儒林外史》中，杨允是谁？- 百度文库", "url": "https://wenku.baidu.com/view/c4b1e6bda4116c175f0e7cd184254b35eefd1aca.html", "snippet": "杨允，又名杨执中，出身贫寒，屡试不第，晚年补廪入贡却辞去教官之职，以“枫林拙叟”自居；表面效仿陶渊明隐居，实则困顿潦倒。" }
+  ]
+}
