@@ -18,14 +18,27 @@ import type { UncertaintyMark, UncertaintyReport } from "@/types/graph";
 
 export interface UncertaintyPanelProps {
   /** 不确定性报告（全库口径，读时派生）。 */
-  report      : UncertaintyReport;
+  report       : UncertaintyReport;
+  /**
+   * 当前**已渲染**的实体 id 集合（画布按连接度裁剪，只画前 N 个）。
+   *
+   * ⚠️ 浏览器验收实测：报告是全库口径，若对未渲染的实体也渲染成可点击按钮，
+   * 用户点了会「什么都不发生」（`nodeById` 查不到 → 详情卡不出现）。
+   * 故非渲染集内的实体只展示、不可点。
+   */
+  selectableIds: ReadonlySet<string>;
   /** 点击实体标记时选中对应节点。 */
-  onSelectNode: (nodeId: string) => void;
+  onSelectNode : (nodeId: string) => void;
   /** 关闭面板。 */
-  onClose     : () => void;
+  onClose      : () => void;
 }
 
-export function UncertaintyPanel({ report, onSelectNode, onClose }: UncertaintyPanelProps) {
+export function UncertaintyPanel({
+  report,
+  selectableIds,
+  onSelectNode,
+  onClose
+}: UncertaintyPanelProps) {
   const groups = groupMarksByKind(report.marks);
 
   return (
@@ -57,6 +70,7 @@ export function UncertaintyPanel({ report, onSelectNode, onClose }: UncertaintyP
                 <UncertaintyItem
                   key={`${mark.kind}-${mark.subjectId}-${mark.subjectKey}`}
                   mark={mark}
+                  selectableIds={selectableIds}
                   onSelectNode={onSelectNode}
                 />
               ))}
@@ -70,17 +84,20 @@ export function UncertaintyPanel({ report, onSelectNode, onClose }: UncertaintyP
 
 function UncertaintyItem({
   mark,
+  selectableIds,
   onSelectNode
 }: {
-  mark        : UncertaintyMark;
-  onSelectNode: (nodeId: string) => void;
+  mark         : UncertaintyMark;
+  selectableIds: ReadonlySet<string>;
+  onSelectNode : (nodeId: string) => void;
 }) {
-  if (mark.subjectType === "entity") {
+  if (mark.subjectType === "entity" && selectableIds.has(mark.subjectId)) {
     return (
       <li className="graph-uncertainty-item">
         <button
           type="button"
           className="graph-uncertainty-subject"
+          data-selectable="true"
           title={mark.detail}
           onClick={() => {
             onSelectNode(mark.subjectId);
@@ -95,9 +112,14 @@ function UncertaintyItem({
     );
   }
 
+  // 关系标记，或未纳入当前渲染子集的实体：只展示（点了也定位不到）。
+  const reason =
+    mark.subjectType === "entity"
+      ? `${mark.detail}（该实体未纳入当前渲染子集，按连接度裁剪）`
+      : mark.detail;
   return (
     <li className="graph-uncertainty-item">
-      <span className="graph-uncertainty-subject" title={mark.detail}>
+      <span className="graph-uncertainty-subject" data-selectable="false" title={reason}>
         {mark.subjectKey}
       </span>
       <span className="graph-uncertainty-confidence" data-confidence={mark.confidence}>

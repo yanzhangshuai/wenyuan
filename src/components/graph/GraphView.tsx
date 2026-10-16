@@ -135,6 +135,18 @@ export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
     [uncertainty, selectedNodeId]
   );
 
+  /**
+   * 当前**已渲染**的实体 id 集合（画布按连接度裁剪）。
+   *
+   * ⚠️ 浏览器验收实测：不确定性报告是全库口径，而画布只画前 N 个节点；
+   * 若对未渲染实体也渲染可点击按钮，用户点击后「什么都不发生」。
+   * 面板据此把非渲染集内的实体降级为纯展示。
+   */
+  const renderedNodeIds = useMemo(
+    () => new Set(sliced.nodes.map((node) => node.id)),
+    [sliced.nodes]
+  );
+
   /** 选中实体的关联关系（两个方向都算），按关系分组排序便于阅读。 */
   const selectedRelations = useMemo(() => {
     if (selectedNodeId === null) {
@@ -366,11 +378,12 @@ export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
               type="button"
               className="graph-uncertainty-toggle"
               aria-expanded={showUncertainty}
+              aria-label={`不确定性（${String(uncertainty.marks.length)} 条标记）`}
               onClick={() => {
                 setShowUncertainty((open) => !open);
               }}
             >
-              不确定 {uncertainty.marks.length}
+              不确定性
             </button>
           ) : null}
           <ThemeToggle />
@@ -408,6 +421,7 @@ export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
             {showUncertainty && uncertainty !== null && uncertainty !== undefined ? (
               <UncertaintyPanel
                 report={uncertainty}
+                selectableIds={renderedNodeIds}
                 onSelectNode={(nodeId) => {
                   setSelectedNodeId(nodeId);
                   setShowUncertainty(false);

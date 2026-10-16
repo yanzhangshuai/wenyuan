@@ -105,4 +105,13 @@ describe("二期 UI 分区接线（T2）", () => {
     const panelSource = codeOnlyOf("src/components/graph/UncertaintyPanel.tsx");
     expect(panelSource).toContain("groupMarksByKind");
   });
+
+  it("未渲染子集内的实体不可点击（浏览器验收缺陷：点了没反应）", () => {
+    // GraphView 必须把「已渲染节点 id 集合」传下去，且面板按它分流可点/不可点。
+    expect(view).toContain("renderedNodeIds");
+    expect(view).toContain("selectableIds={renderedNodeIds}");
+    const panelSource = codeOnlyOf("src/components/graph/UncertaintyPanel.tsx");
+    expect(panelSource).toContain("selectableIds.has");
+    expect(panelSource).toContain('data-selectable="false"');
+  });
 });
