@@ -11,6 +11,7 @@ import { GraphDetailPanel } from "@/components/graph/GraphDetailPanel";
 import { GraphToolbar } from "@/components/graph/GraphToolbar";
 import { MatrixDetailCard } from "@/components/graph/MatrixDetailCard";
 import { RelationMatrixPanel } from "@/components/graph/RelationMatrixPanel";
+import { UncertaintyPanel } from "@/components/graph/UncertaintyPanel";
 import { ThemeToggle } from "@/components/theme";
 import { useHydratedTheme } from "@/hooks/use-hydrated-theme";
 import { sliceByChapter } from "@/lib/graph/chapter-slice";
@@ -69,6 +70,8 @@ export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
   const [mode, setMode] = useState<GraphViewMode>("full");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [matrixCell, setMatrixCell] = useState<{ codeA: string; codeB: string } | null>(null);
+  /** 不确定性面板（二期）：默认关闭，信息头按钮开关。 */
+  const [showUncertainty, setShowUncertainty] = useState(false);
   /**
    * 当前章回（「截至第 N 回」）。初值 = 全书，即默认看到完整图谱。
    *
@@ -122,6 +125,15 @@ export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
   );
 
   const selectedNode = selectedNodeId === null ? null : (nodeById.get(selectedNodeId) ?? null);
+
+  /** 选中实体的不确定性标记（全库报告按 subjectId 过滤）。 */
+  const selectedNodeMarks = useMemo(
+    () =>
+      uncertainty === null || uncertainty === undefined || selectedNodeId === null
+        ? []
+        : uncertainty.marks.filter((mark) => mark.subjectType === "entity" && mark.subjectId === selectedNodeId),
+    [uncertainty, selectedNodeId]
+  );
 
   /** 选中实体的关联关系（两个方向都算），按关系分组排序便于阅读。 */
   const selectedRelations = useMemo(() => {
@@ -349,6 +361,18 @@ export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
         </dl>
 
         <div className="graph-stage-actions">
+          {uncertainty !== null && uncertainty !== undefined && uncertainty.marks.length > 0 ? (
+            <button
+              type="button"
+              className="graph-uncertainty-toggle"
+              aria-expanded={showUncertainty}
+              onClick={() => {
+                setShowUncertainty((open) => !open);
+              }}
+            >
+              不确定 {uncertainty.marks.length}
+            </button>
+          ) : null}
           <ThemeToggle />
         </div>
       </header>
@@ -375,6 +399,22 @@ export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
                   setSelectedNodeId(null);
                 }}
                 profileHref={`/book/${bookId}/entity/${selectedNodeId ?? ""}`}
+                marks={selectedNodeMarks}
+              />
+            ) : null}
+
+            {/* 不确定性面板（二期）：信息头按钮开关，仅在 full 视图渲染
+                （批 63 教训：浮层门槛用 mode === "full"，防压 FocusView）。 */}
+            {showUncertainty && uncertainty !== null && uncertainty !== undefined ? (
+              <UncertaintyPanel
+                report={uncertainty}
+                onSelectNode={(nodeId) => {
+                  setSelectedNodeId(nodeId);
+                  setShowUncertainty(false);
+                }}
+                onClose={() => {
+                  setShowUncertainty(false);
+                }}
               />
             ) : null}
           </>

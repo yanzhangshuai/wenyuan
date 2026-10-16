@@ -3,8 +3,9 @@
 import { useHydratedTheme } from "@/hooks/use-hydrated-theme";
 import { ENTITY_TYPE_LABELS } from "@/lib/entities";
 import { getRelationGroupLabel } from "@/lib/graph/grouping";
+import { UNCERTAINTY_KIND_LABELS } from "@/lib/graph/uncertainty";
 import { getEdgeTypeColorsForTheme } from "@/theme";
-import type { GraphEdge, GraphNode } from "@/types/graph";
+import type { GraphEdge, GraphNode, UncertaintyMark } from "@/types/graph";
 
 /**
  * 选中实体的详情面板。
@@ -32,6 +33,8 @@ export interface GraphDetailPanelProps {
    * 档案回答「做过什么」，两者是不同的阅读需求，故需要显式跳转。
    */
   profileHref?    : string;
+  /** 该实体的不确定性标记（二期：逐实体徽标；来自全库报告，按 subjectId 过滤）。 */
+  marks?          : readonly UncertaintyMark[];
 }
 
 /** 把章节区间渲染成可读文案。 */
@@ -51,7 +54,8 @@ export function GraphDetailPanel({
   counterpartNames,
   onSelectNode,
   onClose,
-  profileHref
+  profileHref,
+  marks
 }: GraphDetailPanelProps) {
   const { selectedTheme, isHydrated } = useHydratedTheme();
   const edgeColors = getEdgeTypeColorsForTheme(
@@ -85,6 +89,22 @@ export function GraphDetailPanel({
           查看人物档案 →
         </a>
       )}
+
+      {/* 逐实体不确定性徽标（二期）：全库报告按 subjectId 过滤后的该实体标记。 */}
+      {marks !== undefined && marks.length > 0 ? (
+        <ul className="graph-detail-marks" aria-label="不确定性标记">
+          {marks.map((mark) => (
+            <li
+              key={`${mark.kind}-${mark.subjectId}`}
+              className="graph-detail-mark"
+              data-confidence={mark.confidence}
+            >
+              <span className="graph-detail-mark-label">{UNCERTAINTY_KIND_LABELS[mark.kind]}</span>
+              <span className="graph-detail-mark-detail">{mark.detail}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {relations.length === 0 ? (
         <p className="graph-detail-hint">该实体暂无已解析出的关系。</p>

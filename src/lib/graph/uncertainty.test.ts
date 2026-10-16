@@ -9,6 +9,7 @@ import {
   detectNameIncomplete,
   detectRelationSingleSource,
   detectTypeSuspect,
+  groupMarksByKind,
   sampleMarksForAudit,
   type UncertaintyEntityInput,
   type UncertaintyRelationInput
@@ -303,5 +304,73 @@ describe("sampleMarksForAudit（自知准确率取样器）", () => {
     const a = sampleMarksForAudit(pool, pool.length, 7).map((m) => m.subjectId + m.kind).sort();
     const b = sampleMarksForAudit(reversed, pool.length, 7).map((m) => m.subjectId + m.kind).sort();
     expect(a).toEqual(b);
+  });
+});
+
+describe("groupMarksByKind（二期面板分组）", () => {
+  const pool = computeUncertainty({
+    entities: [
+      entity({ id: "e1", canonical: "太祖", honorificForm: true, properNameForm: false }),
+      entity({ id: "e2", canonical: "范学台", gateRejection: "official_title" })
+    ],
+    relations: [
+      relation({ id: "r1", evidenceCount: 1, pairKey: "甲⇄乙[朋友]" }),
+      relation({ id: "r2", evidenceCount: 1, pairKey: "丙⇄丁[朋友]" })
+    ]
+  }).marks;
+
+  it("空类别不出现，组序恒为固定类别顺序", () => {
+    const groups = groupMarksByKind(pool);
+    // 本输入触发 ①③⑤（范学台命中官职词表 → ③）
+    expect(groups.map((g) => g.kind)).toEqual([
+      "name_incomplete",
+      "type_suspect",
+      "relation_single_source"
+    ]);
+    expect(groups[0]?.label.length).toBeGreaterThan(0);
+  });
+
+  it("组内先按置信度（high→low）再按对象键排序，输入顺序无关", () => {
+    const shuffled = [...pool].reverse();
+    const a = groupMarksByKind(pool).map((g) => g.marks.map((m) => m.subjectId).join());
+    const b = groupMarksByKind(shuffled).map((g) => g.marks.map((m) => m.subjectId).join());
+    expect(a).toEqual(b);
+  });
+
+  it("空输入 → 空分组", () => {
+    expect(groupMarksByKind([])).toEqual([]);
+  });
+});
+
+describe("groupMarksByKind（合成标记：同组混合置信度）", () => {
+  // 真实检测器当前各自只发一种置信度，但函数是通用工具：
+  // 未来检测器可能同组多置信度 —— 用合成标记把「组内置信度排序」钉死。
+  const mixed = [
+    {
+      subjectType: "relationship" as const,
+      subjectId  : "r2",
+      subjectKey : "乙⇄丁[朋友]",
+      kind       : "relation_single_source" as const,
+      detector   : { id: "relation_single_source", version: 1 },
+      confidence : "low" as const,
+      detail     : "低置信样本"
+    },
+    {
+      subjectType: "relationship" as const,
+      subjectId  : "r1",
+      subjectKey : "甲⇄丙[朋友]",
+      kind       : "relation_single_source" as const,
+      detector   : { id: "relation_single_source", version: 1 },
+      confidence : "high" as const,
+      detail     : "高置信样本"
+    }
+  ];
+
+  it("同组内 high 排在 low 前（与输入顺序无关）", () => {
+    const groups = groupMarksByKind(mixed);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.marks.map((m) => m.subjectId)).toEqual(["r1", "r2"]);
+    const reversed = groupMarksByKind([...mixed].reverse());
+    expect(reversed[0]?.marks.map((m) => m.subjectId)).toEqual(["r1", "r2"]);
   });
 });

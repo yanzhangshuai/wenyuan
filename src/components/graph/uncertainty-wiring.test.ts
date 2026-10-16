@@ -73,3 +73,36 @@ describe("不确定性视图接线（GraphView.tsx）", () => {
     expect(view).toContain("UNCERTAINTY_KIND_LABELS");
   });
 });
+
+describe("二期 UI 分区接线（T2）", () => {
+  it("选中实体的标记传给详情卡（逐实体徽标）", () => {
+    expect(view).toContain("selectedNodeMarks");
+    expect(view).toContain("marks={selectedNodeMarks}");
+  });
+
+  it("面板组件被渲染且受 full 视图门槛约束（批 63：浮层门槛 mode === \"full\"）", () => {
+    expect(view).toContain("UncertaintyPanel");
+    // 面板与详情卡同属 mode === "full" 分支：门槛必须先于面板出现。
+    const fullGate = view.indexOf('mode === "full"');
+    const panelRender = view.indexOf("<UncertaintyPanel");
+    expect(fullGate).toBeGreaterThanOrEqual(0);
+    expect(panelRender).toBeGreaterThan(fullGate);
+  });
+
+  it("面板点击实体标记 → 选中节点并收起面板（交互闭环）", () => {
+    expect(view).toContain("setSelectedNodeId(nodeId)");
+    expect(view).toContain("setShowUncertainty(false)");
+  });
+
+  it("详情卡接受 marks prop 并渲染徽标列表", () => {
+    const panel = codeOnlyOf("src/components/graph/GraphDetailPanel.tsx");
+    expect(panel).toContain("marks");
+    expect(panel).toContain("graph-detail-marks");
+    expect(panel).toContain("UNCERTAINTY_KIND_LABELS");
+  });
+
+  it("面板组件消费 groupMarksByKind（分组逻辑在纯函数层，不在 UI 里重写）", () => {
+    const panelSource = codeOnlyOf("src/components/graph/UncertaintyPanel.tsx");
+    expect(panelSource).toContain("groupMarksByKind");
+  });
+});

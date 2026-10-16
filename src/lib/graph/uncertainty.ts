@@ -353,3 +353,47 @@ export function sampleMarksForAudit(
   }
   return sorted.slice(0, Math.max(0, count));
 }
+
+/* ── UI 分组助手（二期：面板按类别分组展示） ─────────────────── */
+
+const CONFIDENCE_RANK: Record<UncertaintyMark["confidence"], number> = {
+  high  : 0,
+  medium: 1,
+  low   : 2
+};
+
+/** 面板分组：按固定类别顺序排列，组内按置信度再按对象键排序（确定性渲染顺序）。 */
+export function groupMarksByKind(marks: readonly UncertaintyMark[]): UncertaintyMarkGroup[] {
+  const byKind = new Map<UncertaintyKind, UncertaintyMark[]>();
+  for (const mark of marks) {
+    const list = byKind.get(mark.kind) ?? [];
+    list.push(mark);
+    byKind.set(mark.kind, list);
+  }
+
+  const order: UncertaintyKind[] = [
+    "name_incomplete",
+    "name_ambiguous",
+    "type_suspect",
+    "alias_suspect",
+    "relation_single_source"
+  ];
+
+  return order.flatMap((kind) => {
+    const list = byKind.get(kind);
+    if (list === undefined || list.length === 0) return [];
+    const sorted = [...list].sort((left, right) => {
+      const rankDelta = CONFIDENCE_RANK[left.confidence] - CONFIDENCE_RANK[right.confidence];
+      if (rankDelta !== 0) return rankDelta;
+      return left.subjectKey < right.subjectKey ? -1 : 1;
+    });
+    return [{ kind, label: UNCERTAINTY_KIND_LABELS[kind], marks: sorted }];
+  });
+}
+
+/** 面板分组项。 */
+export interface UncertaintyMarkGroup {
+  kind : UncertaintyKind;
+  label: string;
+  marks: UncertaintyMark[];
+}
