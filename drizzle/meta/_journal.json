@@ -15,6 +15,13 @@
       "when": 1791978473876,
       "tag": "0001_rename_work_to_book",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792144424869,
+      "tag": "0002_wide_stryfe",
+      "breakpoints": true
     }
   ]
 }

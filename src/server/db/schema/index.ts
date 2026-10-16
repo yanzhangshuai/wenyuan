@@ -7,5 +7,6 @@
 export * from "./analysis";
 export * from "./entities";
 export * from "./enums";
+export * from "./knowledge";
 export * from "./relations";
 export * from "./books";

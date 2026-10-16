@@ -83,7 +83,7 @@ const SAMPLE_NOVEL = [
   "范进中了举人，胡屠户前来贺喜。周进闻讯，也差人送了一份贺礼给范进。"
 ].join("\n");
 
-/** 迁移应建出的表（12 张）。 */
+/** 迁移应建出的表（13 张；批 84 加入三期判定层的 external_knowledge）。 */
 const EXPECTED_TABLES = [
   "analysis_calls",
   "analysis_issues",
@@ -94,6 +94,7 @@ const EXPECTED_TABLES = [
   "entity_aliases",
   "entity_mentions",
   "evidence_spans",
+  "external_knowledge",
   "paragraphs",
   "relation_types",
   "relationships"
@@ -142,7 +143,7 @@ afterAll(async () => {
 });
 
 describe("迁移", () => {
-  it("建出全部 12 张表", async () => {
+  it("建出全部 13 张表", async () => {
     const result = await pglite.query<{ tablename: string }>(
       "select tablename from pg_tables where schemaname = 'public' order by tablename"
     );

@@ -19,7 +19,7 @@ import { RELATION_GROUPS, getEdgeColorForCategory } from "@/lib/graph/grouping";
 import { UNCERTAINTY_KIND_LABELS } from "@/lib/graph/uncertainty";
 import type { RelationCategory } from "@/lib/relations";
 import { getEdgeTypeColorsForTheme } from "@/theme";
-import type { GraphSnapshot, UncertaintyReport } from "@/types/graph";
+import type { ExternalKnowledgeBySubject, GraphSnapshot, UncertaintyReport } from "@/types/graph";
 
 /**
  * 图谱视图容器（页面级交互编排）—— 三视图合一。
@@ -57,16 +57,21 @@ const VIEW_MODES: readonly { mode: GraphViewMode; label: string }[] = [
 
 export interface GraphViewProps {
   /** 当前作品 ID，用于面包屑与档案页跳转。 */
-  bookId      : string;
-  snapshot    : GraphSnapshot;
+  bookId            : string;
+  snapshot          : GraphSnapshot;
   /**
    * 不确定性报告（全库口径，读时派生）。**与 snapshot 并列**，不参与切片/渲染逻辑；
    * 一期只在信息头暴露计数，逐实体标注属二期（设计文档 §六：一二期捆绑交付）。
    */
-  uncertainty?: UncertaintyReport | null;
+  uncertainty?      : UncertaintyReport | null;
+  /**
+   * 外部知识（三期判定层，独立表读时叠加）。**与 snapshot 并列**，UI **分区展示**
+   * （「本书信息」vs「外部资料 · 全书视角」），让用户一眼看出哪条来自哪里。
+   */
+  externalKnowledge?: ExternalKnowledgeBySubject | null;
 }
 
-export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
+export function GraphView({ bookId, snapshot, uncertainty, externalKnowledge }: GraphViewProps) {
   const [mode, setMode] = useState<GraphViewMode>("full");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [matrixCell, setMatrixCell] = useState<{ codeA: string; codeB: string } | null>(null);
@@ -142,6 +147,15 @@ export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
    * 若对未渲染实体也渲染可点击按钮，用户点击后「什么都不发生」。
    * 面板据此把非渲染集内的实体降级为纯展示。
    */
+  /** 选中实体的外部资料（按规范名索引；独立表，读时叠加）。 */
+  const selectedNodeExternal = useMemo(
+    () =>
+      externalKnowledge === null || externalKnowledge === undefined || selectedNode === null
+        ? []
+        : externalKnowledge[selectedNode.name] ?? [],
+    [externalKnowledge, selectedNode]
+  );
+
   const renderedNodeIds = useMemo(
     () => new Set(sliced.nodes.map((node) => node.id)),
     [sliced.nodes]
@@ -413,6 +427,7 @@ export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
                 }}
                 profileHref={`/book/${bookId}/entity/${selectedNodeId ?? ""}`}
                 marks={selectedNodeMarks}
+                external={selectedNodeExternal}
               />
             ) : null}
 

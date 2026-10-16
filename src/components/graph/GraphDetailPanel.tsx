@@ -5,7 +5,11 @@ import { ENTITY_TYPE_LABELS } from "@/lib/entities";
 import { getRelationGroupLabel } from "@/lib/graph/grouping";
 import { UNCERTAINTY_KIND_LABELS } from "@/lib/graph/uncertainty";
 import { getEdgeTypeColorsForTheme } from "@/theme";
-import type { GraphEdge, GraphNode, UncertaintyMark } from "@/types/graph";
+import {
+  KNOWLEDGE_FIELD_LABELS,
+  KNOWLEDGE_RESOLUTION_LABELS
+} from "@/types/graph";
+import type { ExternalKnowledgeItem, GraphEdge, GraphNode, UncertaintyMark } from "@/types/graph";
 
 /**
  * 选中实体的详情面板。
@@ -35,6 +39,13 @@ export interface GraphDetailPanelProps {
   profileHref?    : string;
   /** 该实体的不确定性标记（二期：逐实体徽标；来自全库报告，按 subjectId 过滤）。 */
   marks?          : readonly UncertaintyMark[];
+  /**
+   * 该实体的外部资料（三期：**独立分区**）。
+   *
+   * 铁律「UI 分区」：本节标题显式写明「外部资料 · 全书视角」，
+   * 与上方「本书信息」（图谱自身产出）视觉与语义都分开 —— 用户必须能一眼看出哪条来自哪里。
+   */
+  external?       : readonly ExternalKnowledgeItem[];
 }
 
 /** 把章节区间渲染成可读文案。 */
@@ -55,7 +66,8 @@ export function GraphDetailPanel({
   onSelectNode,
   onClose,
   profileHref,
-  marks
+  marks,
+  external
 }: GraphDetailPanelProps) {
   const { selectedTheme, isHydrated } = useHydratedTheme();
   const edgeColors = getEdgeTypeColorsForTheme(
@@ -104,6 +116,41 @@ export function GraphDetailPanel({
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {/* 外部资料分区（三期）：与「本书信息」视觉分开，且**永不合并进图谱**。 */}
+      {external !== undefined && external.length > 0 ? (
+        <section className="graph-detail-external" aria-label="外部资料">
+          <h3 className="graph-detail-external-title">外部资料 · 全书视角</h3>
+          <ul className="graph-detail-external-list">
+            {external.map((item) => (
+              <li key={`${item.subjectKey}-${item.field}`} className="graph-detail-external-item">
+                <div className="graph-detail-external-head">
+                  <span className="graph-detail-external-field">
+                    {KNOWLEDGE_FIELD_LABELS[item.field] ?? item.field}
+                  </span>
+                  <span className="graph-detail-external-badge">
+                    {KNOWLEDGE_RESOLUTION_LABELS[item.resolution] ?? item.resolution} · {item.confidence}
+                  </span>
+                </div>
+                {item.value === null ? null : (
+                  <p className="graph-detail-external-value">{item.value}</p>
+                )}
+                {item.sourceUrls.length === 0 ? null : (
+                  <ul className="graph-detail-external-sources">
+                    {item.sourceUrls.map((url) => (
+                      <li key={url}>
+                        <a href={url} target="_blank" rel="noopener noreferrer">
+                          {url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       {relations.length === 0 ? (

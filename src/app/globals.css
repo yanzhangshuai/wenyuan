@@ -1858,6 +1858,94 @@ a[aria-current="page"],
   }
 
   /* =========================================
+     外部资料分区（三期判定层）
+     铁律「UI 分区」：用上边框把「外部资料」与「本书信息」显式隔开。
+     ========================================= */
+  .graph-detail-external {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--color-border);
+  }
+
+  .graph-detail-external-title {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .graph-detail-external-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .graph-detail-external-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    background-color: color-mix(in oklch, var(--color-card) 80%, transparent);
+  }
+
+  .graph-detail-external-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .graph-detail-external-field {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+  }
+
+  .graph-detail-external-badge {
+    flex-shrink: 0;
+    padding: 0 0.375rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    color: var(--color-muted-foreground);
+  }
+
+  .graph-detail-external-value {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: var(--color-foreground);
+  }
+
+  .graph-detail-external-sources {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.6875rem;
+    word-break: break-all;
+  }
+
+  .graph-detail-external-sources a {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  .graph-detail-external-sources a:hover {
+    text-decoration: underline;
+  }
+
+  /* =========================================
      视图切换（全图 / 聚焦 / 矩阵）
      ========================================= */
   /* 切换条按钮：对齐 v1 `graph-toolbar` 的按钮语言 ——

@@ -4,6 +4,7 @@ import { Suspense, use } from "react";
 import { GraphView } from "@/components/graph/GraphView";
 import { GraphSkeleton } from "@/components/ui/states";
 import { loadGraphSnapshot } from "@/server/modules/graph/read-graph";
+import { loadExternalKnowledgeForBook } from "@/server/modules/graph/read-knowledge";
 import { loadUncertainty } from "@/server/modules/graph/read-uncertainty";
 
 /**
@@ -33,6 +34,8 @@ export default async function BookGraphPage({ params }: BookGraphPageProps) {
   const snapshotPromise = loadGraphSnapshot(bookId);
   // 不确定性报告（设计文档 §5.3）：与 snapshot **并列**下发，读时派生、不写图谱表。
   const uncertaintyPromise = loadUncertainty(bookId);
+  // 外部知识（三期判定层）：独立表、读时叠加，**不合并进 snapshot**（UI 分区展示）。
+  const knowledgePromise = loadExternalKnowledgeForBook(bookId);
 
   return (
     <Suspense fallback={<GraphSkeleton />}>
@@ -40,6 +43,7 @@ export default async function BookGraphPage({ params }: BookGraphPageProps) {
         bookId={bookId}
         snapshotPromise={snapshotPromise}
         uncertaintyPromise={uncertaintyPromise}
+        knowledgePromise={knowledgePromise}
       />
     </Suspense>
   );
@@ -49,6 +53,7 @@ interface GraphSectionProps {
   bookId            : string;
   snapshotPromise   : ReturnType<typeof loadGraphSnapshot>;
   uncertaintyPromise: ReturnType<typeof loadUncertainty>;
+  knowledgePromise  : ReturnType<typeof loadExternalKnowledgeForBook>;
 }
 
 /**
@@ -57,13 +62,21 @@ interface GraphSectionProps {
  * @param props 由页面创建的取数 Promise
  * @returns 图谱视图；作品不存在时抛 `notFound()`
  */
-function GraphSection({ bookId, snapshotPromise, uncertaintyPromise }: GraphSectionProps) {
+function GraphSection({ bookId, snapshotPromise, uncertaintyPromise, knowledgePromise }: GraphSectionProps) {
   const snapshot = use(snapshotPromise);
   const uncertainty = use(uncertaintyPromise);
+  const externalKnowledge = use(knowledgePromise);
 
   if (snapshot === null) {
     notFound();
   }
 
-  return <GraphView bookId={bookId} snapshot={snapshot} uncertainty={uncertainty} />;
+  return (
+    <GraphView
+      bookId={bookId}
+      snapshot={snapshot}
+      uncertainty={uncertainty}
+      externalKnowledge={externalKnowledge}
+    />
+  );
 }

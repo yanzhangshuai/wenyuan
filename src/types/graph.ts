@@ -163,3 +163,41 @@ export interface UncertaintyReport {
   marks   : UncertaintyMark[];
   coverage: UncertaintyCoverage;
 }
+
+/* ────────────────────────────────────────────────────────────────
+ * 外部知识（三期判定层）—— 与 snapshot 并列下发，**永不合并**
+ * ──────────────────────────────────────────────────────────────── */
+
+/** 一条外部知识（只标注、不改写；必须带出处）。 */
+export interface ExternalKnowledgeItem {
+  subjectKey: string;
+  /** canonical_name | biography | hometown | courtesy_name | prototype | relation_note */
+  field     : string;
+  value     : string | null;
+  /** resolved | disputed | unresolvable */
+  resolution: string;
+  /** high | medium | low | none */
+  confidence: string;
+  sourceUrls: string[];
+  fetchedAt : string;
+}
+
+/** 按实体规范名索引的外部知识。 */
+export type ExternalKnowledgeBySubject = Record<string, ExternalKnowledgeItem[]>;
+
+/** 字段的中文标签（UI 与报告共用一份）。 */
+export const KNOWLEDGE_FIELD_LABELS: Record<string, string> = {
+  canonical_name: "本名",
+  biography     : "简介",
+  hometown      : "籍贯",
+  courtesy_name : "字号",
+  prototype     : "原型",
+  relation_note : "关系说明"
+};
+
+/** 判定终态的中文标签。 */
+export const KNOWLEDGE_RESOLUTION_LABELS: Record<string, string> = {
+  resolved    : "已补全",
+  disputed    : "存疑",
+  unresolvable: "查不到"
+};
