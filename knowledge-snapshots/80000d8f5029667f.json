@@ -1,0 +1,9 @@
+{
+  "_comment": "批次 3（2026-10-16）：检索「红楼梦 迎春」的真实结果。",
+  "query": "红楼梦 迎春",
+  "provider": "manual-websearch-2026-10-16",
+  "hits": [
+    { "title": "贾迎春 - 百度百科", "url": "https://baike.baidu.com/item/%E8%B4%BE%E8%BF%8E%E6%98%A5/977138", "snippet": "贾迎春，又名二姑娘、二木头、迎丫头，《红楼梦》中的人物，其名首见于第二回。" },
+    { "title": "误嫁中山狼 - 百度百科", "url": "https://baike.baidu.com/item/%E8%AF%AF%E5%AB%81%E4%B8%AD%E5%B1%B1%E7%8B%BC/15863781", "snippet": "贾迎春为贾赦庶女，因性格懦弱被称为“二木头”，其父为抵五千两债务将其嫁予孙绍祖，婚后遭虐待，一年内身亡。" }
+  ]
+}

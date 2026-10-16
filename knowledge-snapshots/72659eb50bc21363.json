@@ -1,0 +1,9 @@
+{
+  "_comment": "批次 3（2026-10-16）：检索「红楼梦 元春」的真实结果。",
+  "query": "红楼梦 元春",
+  "provider": "manual-websearch-2026-10-16",
+  "hits": [
+    { "title": "贾元春 - 百度百科", "url": "https://baike.baidu.com/item/%E8%B4%BE%E5%85%83%E6%98%A5/374750", "snippet": "贾元春，《红楼梦》中的人物，又称贾妃、元妃，其名首见于第二回。主要成就：才选凤藻宫，加封贤德妃。" },
+    { "title": "陈学军续红楼梦·后记三十五：金陵十二钗贾元春列传", "url": "https://read.qidian.com/chapter/8StU5X8z7H736JmDw--oJQ2/dJE_6jfNb4T6ItTi_ILQ7A2/", "snippet": "贾氏元春，为荣府嫡长女，生于正月初一，故名元春。自幼入宫作女史，后晋封凤藻宫尚书，加封贤德妃。" }
+  ]
+}
