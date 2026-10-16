@@ -76,7 +76,8 @@ export interface DetectorIdentity {
 }
 
 export const NAME_INCOMPLETE_DETECTOR: DetectorIdentity = { id: "name_incomplete", version: 1 };
-export const NAME_AMBIGUOUS_DETECTOR: DetectorIdentity = { id: "name_ambiguous", version: 1 };
+/** v2（批 76）：同姓池与被标实体都限定 PERSON —— v1 会把 `天子` 与 `天香楼`（LOCATION）按「天」姓配对。 */
+export const NAME_AMBIGUOUS_DETECTOR: DetectorIdentity = { id: "name_ambiguous", version: 2 };
 export const TYPE_SUSPECT_DETECTOR: DetectorIdentity = { id: "type_suspect", version: 1 };
 export const ALIAS_SUSPECT_DETECTOR: DetectorIdentity = { id: "alias_suspect", version: 1 };
 export const RELATION_SINGLE_SOURCE_DETECTOR: DetectorIdentity = {
@@ -125,9 +126,11 @@ export function detectNameIncomplete(
 export function detectNameAmbiguous(
   entities: readonly UncertaintyEntityInput[]
 ): UncertaintyMark[] {
+  // v2（批 76）：两侧都限 PERSON。v1 不限类型，会把 `仁宗皇帝` 与 `仁和`（LOCATION）、
+  // `天子` 与 `天香楼` 这类跨类型配对当「同人歧义」—— 预演实测儒林 61→48、红楼 35→32。
   const properNamesBySurname = new Map<string, string[]>();
   for (const entity of entities) {
-    if (!entity.properNameForm) continue;
+    if (entity.type !== "PERSON" || !entity.properNameForm) continue;
     const surname = entity.canonical.slice(0, 1);
     const list = properNamesBySurname.get(surname) ?? [];
     list.push(entity.canonical);
@@ -136,6 +139,7 @@ export function detectNameAmbiguous(
 
   const marks: UncertaintyMark[] = [];
   for (const entity of entities) {
+    if (entity.type !== "PERSON") continue;
     if (!entity.honorificForm || entity.aliasCount > 0) continue;
     const candidates = properNamesBySurname.get(entity.canonical.slice(0, 1)) ?? [];
     if (candidates.length === 0) continue;

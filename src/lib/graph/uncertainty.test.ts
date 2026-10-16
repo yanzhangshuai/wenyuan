@@ -75,7 +75,7 @@ describe("① detectNameIncomplete（本名缺失）", () => {
 });
 
 describe("② detectNameAmbiguous（同人歧义）", () => {
-  it("本名缺失 + 同姓有本名形态实体 → medium 标记", () => {
+  it("本名缺失 + 同姓有本名形态实体 → medium 标记（detector v2）", () => {
     const marks = detectNameAmbiguous([
       entity({ id: "e1", canonical: "太祖", honorificForm: true, properNameForm: false }),
       entity({ id: "e2", canonical: "太史公", type: "PERSON", properNameForm: true })
@@ -83,6 +83,7 @@ describe("② detectNameAmbiguous（同人歧义）", () => {
     expect(marks).toHaveLength(1);
     expect(marks[0]?.subjectId).toBe("e1");
     expect(marks[0]?.confidence).toBe("medium");
+    expect(marks[0]?.detector).toEqual({ id: "name_ambiguous", version: 2 });
   });
 
   it("同姓无本名形态实体 → 不标", () => {
@@ -97,6 +98,23 @@ describe("② detectNameAmbiguous（同人歧义）", () => {
     const marks = detectNameAmbiguous([
       entity({ id: "e1", canonical: "卫先生", honorificForm: true, aliasCount: 1 }),
       entity({ id: "e2", canonical: "卫体善", properNameForm: true })
+    ]);
+    expect(marks).toHaveLength(0);
+  });
+
+  it("v2：同姓本名池只认 PERSON —— 地理实体的同姓不构成歧义", () => {
+    const marks = detectNameAmbiguous([
+      // 仁宗皇帝（PERSON，称谓）与 仁和（LOCATION，本名形态）同姓「仁」
+      entity({ id: "e1", canonical: "仁宗皇帝", honorificForm: true, properNameForm: false }),
+      entity({ id: "e2", canonical: "仁和", type: "LOCATION", properNameForm: true })
+    ]);
+    expect(marks).toHaveLength(0);
+  });
+
+  it("v2：被标实体本身非 PERSON → 不标（即使池里有 PERSON）", () => {
+    const marks = detectNameAmbiguous([
+      entity({ id: "e1", canonical: "天香楼", type: "LOCATION", honorificForm: true, properNameForm: false }),
+      entity({ id: "e2", canonical: "天香居士", properNameForm: true })
     ]);
     expect(marks).toHaveLength(0);
   });
