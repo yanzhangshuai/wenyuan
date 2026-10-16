@@ -23,6 +23,7 @@ function codeOnlyOf(relativePath: string): string {
 const page = codeOnlyOf("src/app/(graph)/book/[bookId]/page.tsx");
 const view = codeOnlyOf("src/components/graph/GraphView.tsx");
 const panel = codeOnlyOf("src/components/graph/GraphDetailPanel.tsx");
+const section = codeOnlyOf("src/components/graph/ExternalKnowledgeSection.tsx");
 const repository = codeOnlyOf("src/server/modules/knowledge/repository.ts");
 const agent = codeOnlyOf("scripts/knowledge-agent.ts");
 
@@ -38,9 +39,25 @@ describe("三期接线：页面 → 视图 → 详情卡", () => {
   });
 
   it("详情卡渲染「外部资料」独立分区（UI 分区铁律）", () => {
-    expect(panel).toContain("graph-detail-external");
-    expect(panel).toContain("外部资料 · 全书视角");
-    expect(panel).toContain("sourceUrls");
+    expect(panel).toContain("ExternalKnowledgeSection");
+    expect(section).toContain("外部资料 · 全书视角");
+    expect(section).toContain("sourceUrls");
+  });
+
+  it("档案页也渲染同一份分区（简介最该出现的地方）", () => {
+    const profile = codeOnlyOf("src/app/(viewer)/book/[bookId]/entity/[entityId]/page.tsx");
+    expect(profile).toContain("ExternalKnowledgeSection");
+    expect(profile).toContain("loadExternalKnowledgeForBook");
+    // 按规范名索引（判定层的 subjectKey = 规范名）
+    expect(profile).toContain("knowledgeBySubject[data.profile.name]");
+    // 空资料也展示分区（用户至少知道「为什么没有简介」）
+    expect(profile).toContain("showWhenEmpty");
+  });
+
+  it("两个消费方共用同一份渲染实现（防「一处改一处漏」）", () => {
+    // 分区标题只允许出现在共享组件里，不得在调用点重复写死。
+    expect(panel).not.toContain("外部资料 · 全书视角");
+    expect(section).toContain("外部资料 · 全书视角");
   });
 });
 
