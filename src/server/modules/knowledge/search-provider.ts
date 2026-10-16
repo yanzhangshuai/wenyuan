@@ -16,6 +16,21 @@ import type { SearchHit, SearchResult } from "./types";
  *    本模块只对接**结构化 JSON 接口**（用户自备 key），或读本地快照。
  */
 
+/**
+ * 「本次**未检索**」的专用错误（与「检索了但没结果」严格区分）。
+ *
+ * 🚨 为什么必须区分（批 86 实测教训）：快照缺失若返回空命中，
+ * 判定层会把「我们根本没搜过」记成 `unresolvable`（查不到）——
+ * 那是**缓存污染**：后续运行看到已有键就跳过，永远补不上。
+ * HTTP 检索器返回 200 但零结果才是真正的「查不到」。
+ */
+export class SearchUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SearchUnavailableError";
+  }
+}
+
 export interface SearchProvider {
   /** 检索器身份，写入留档（与 snapshotHash 一起构成可复核链）。 */
   readonly name: string;
@@ -45,7 +60,10 @@ export function createFixtureProvider(dir: string): SearchProvider {
       try {
         raw = readFileSync(file, "utf8");
       } catch {
-        return Promise.resolve({ query, provider: name, hits: [] });
+        // 快照缺失 = 本次**没搜**（不是「搜了没结果」）→ 返回 rejected promise
+        // （⚠️ 必须 reject 而非同步 throw：本方法是同步实现包 Promise，
+        //   同步 throw 会在调用点直接炸出，绕过调用方的 try/catch）。
+        return Promise.reject(new SearchUnavailableError(`快照缺失：${file}（未检索，不记为「查不到」）`));
       }
       const parsed = JSON.parse(raw) as Partial<SearchResult>;
       const hits = Array.isArray(parsed.hits) ? parsed.hits : [];

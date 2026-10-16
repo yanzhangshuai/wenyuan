@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { createFixtureProvider, fixtureFileName, normalizeHits } from "./search-provider";
+import {
+  SearchUnavailableError,
+  createFixtureProvider,
+  fixtureFileName,
+  normalizeHits
+} from "./search-provider";
 import { hashSnapshot } from "./snapshot";
+import { formatKnowledgeSummary } from "./summary";
 import { knowledgeKey, selectKnowledgeTargets, type KnowledgeTargetEntity } from "./targets";
 import type { SearchHit } from "./types";
 import { parseKnowledgeVerdict } from "./verdict";
@@ -167,9 +173,42 @@ describe("检索结果归一化与快照哈希（可复核链）", () => {
     expect(fixtureFileName("a")).not.toBe(fixtureFileName("b"));
   });
 
-  it("快照缺失 → 空命中（等价「查不到」，判定层会记 unresolvable）", async () => {
+  it("快照缺失 → 抛 SearchUnavailableError（= 未检索，**不得**记成「查不到」）", async () => {
+    // 🚨 回归护栏：这里若返回空命中，判定层会把「没搜过」写成 unresolvable，
+    // 后续运行见键即跳过 → 永远补不上（批 86 实测踩到过）。
     const provider = createFixtureProvider("不存在的目录");
-    const result = await provider.search("任意 query");
-    expect(result.hits).toEqual([]);
+    await expect(provider.search("任意 query")).rejects.toBeInstanceOf(SearchUnavailableError);
+  });
+});
+
+describe("formatKnowledgeSummary（两个消费方共用一份文案）", () => {
+  const base = {
+    skippedReason: null,
+    providerName : "fixture:x",
+    bookTitles   : ["儒林外史"],
+    targets      : 3,
+    calls        : 2,
+    costUsd      : 0.0012,
+    resolved     : 1,
+    disputed     : 0,
+    unresolvable : 1,
+    written      : 2,
+    skippedSearch: 0
+  };
+
+  it("正常汇总含作品名、成本、三态计数与「图谱未改动」", () => {
+    const text = formatKnowledgeSummary(base);
+    expect(text).toContain("儒林外史");
+    expect(text).toContain("$0.0012");
+    expect(text).toContain("resolved 1");
+    expect(text).toContain("unresolvable 1");
+    expect(text).toContain("图谱未改动");
+  });
+
+  it("被跳过时只输出原因（不输出误导性的 0 计数）", () => {
+    const text = formatKnowledgeSummary({ ...base, skippedReason: "未配置检索源" });
+    expect(text).toContain("已跳过");
+    expect(text).toContain("未配置检索源");
+    expect(text).not.toContain("成本");
   });
 });

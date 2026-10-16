@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import { getDatabase } from "@/server/db/client";
 import { books } from "@/server/db/schema";
 import { runPipeline } from "@/server/modules/analysis/pipeline/run";
+import { runKnowledgeAgent } from "@/server/modules/knowledge/run-agent";
+import { formatKnowledgeSummary } from "@/server/modules/knowledge/summary";
 
 /**
  * 解析执行脚本。
@@ -10,10 +12,19 @@ import { runPipeline } from "@/server/modules/analysis/pipeline/run";
  * 用法：
  *   pnpm analyze <bookId>
  *   pnpm analyze --title 《儒林外史》
+ *   pnpm analyze <bookId> --with-knowledge   # 解析完成后顺带跑三期判定层（外部资料补全）
+ *
+ * `--with-knowledge` 是**流程编排**，不是数据合并：
+ * 判定层仍写独立的 `external_knowledge` 表、仍不碰图谱（否则会失去成本可预测、
+ * $0 预演、可回退与尺子有效性）。未配置检索源时**只提示、不报错**——
+ * 解析本身已经成功，增强步骤不得改变解析的成功语义。
  *
  * 设计原因：把「执行解析」做成独立 CLI 而非 API 路由，
  * 使长耗时任务不受 HTTP 超时约束，且便于在 CI 或本地批量跑评测。
  */
+
+/** 是否顺带跑判定层（`--with-knowledge`）。 */
+const WITH_KNOWLEDGE_FLAG = "--with-knowledge";
 
 /** 解析命令行参数。 */
 async function resolveBookId(argv: readonly string[]): Promise<string> {
@@ -43,7 +54,10 @@ async function resolveBookId(argv: readonly string[]): Promise<string> {
 
 /** 入口。 */
 async function main(): Promise<void> {
-  const bookId = await resolveBookId(process.argv.slice(2));
+  const rawArgs = process.argv.slice(2);
+  const withKnowledge = rawArgs.includes(WITH_KNOWLEDGE_FLAG);
+  // 标志位不参与 bookId/title 解析，避免污染位置参数。
+  const bookId = await resolveBookId(rawArgs.filter((arg) => arg !== WITH_KNOWLEDGE_FLAG));
   console.log(`[analyze] 开始解析作品 ${bookId}`);
 
   // ⚠️ N20 的教训有两个方向，两个方向都必须处理：
@@ -81,6 +95,23 @@ async function main(): Promise<void> {
     for (const issue of result.issues) {
       console.log(`    ${issue.code} × ${issue.count}`);
     }
+  }
+
+  // ── 后置钩子：三期判定层（可选增强，失败不影响解析结果）──
+  if (!withKnowledge) return;
+
+  console.log("\n[analyze] --with-knowledge：开始补外部资料（独立表，图谱不改动）");
+  try {
+    const summary = await runKnowledgeAgent({ bookId, requireProvider: false });
+    console.log(formatKnowledgeSummary(summary));
+    if (summary.skippedReason !== null) {
+      console.log("  提示：配置 SEARCH_API_URL + SEARCH_API_KEY（或 SEARCH_FIXTURE_DIR）后可用");
+      console.log("        pnpm knowledge:agent --book <书名> 单独补跑；解析结果不受影响。");
+    }
+  } catch (error) {
+    // 增强步骤的任何异常都不应让「解析成功」变成失败。
+    console.error("[analyze] 外部资料补全失败（解析结果已落库，不受影响）：");
+    console.error(`  ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

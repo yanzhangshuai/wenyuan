@@ -22,7 +22,8 @@
     "db:studio": "drizzle-kit studio",
     "import:book": "tsx --conditions=react-server scripts/import-book.ts",
     "analyze": "tsx --conditions=react-server scripts/analyze.ts",
-    "eval": "tsx --conditions=react-server scripts/eval/run-eval.ts"
+    "eval": "tsx --conditions=react-server scripts/eval/run-eval.ts",
+    "knowledge:agent": "tsx --conditions=react-server scripts/knowledge-agent.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
