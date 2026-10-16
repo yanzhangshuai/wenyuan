@@ -53,13 +53,13 @@ export interface UncertaintyEntityInput {
 
 /** 关系侧输入（读侧按全库关系逐条装配）。 */
 export interface UncertaintyRelationInput {
-  id           : string;
-  sourceId     : string;
-  targetId     : string;
+  id                     : string;
+  sourceId               : string;
+  targetId               : string;
   /** 展示用键：`甲⇄乙[码]`。 */
-  pairKey      : string;
-  status       : string;
-  evidenceCount: number;
+  pairKey                : string;
+  status                 : string;
+  evidenceCount          : number;
   /**
    * 两端实体**共现段落数**（读侧计算）。
    *

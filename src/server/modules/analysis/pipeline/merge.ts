@@ -269,7 +269,30 @@ function pickCanonicalKey(
   frequency: ReadonlyMap<string, number>
 ): string {
   const proper = keys.filter((key) => isProperNameForm(key));
-  const pool = proper.length > 0 ? proper : keys;
+
+  // ── 批 82：「尾字人」的严格最高频例外 ─────────────────────────────
+  // 背景：批 65 把「人」收进 `NON_NAME_TAIL_CHARS`（`name-form.ts`），
+  // 于是 `袭人`（全书 1140 次）、`匡超人`（212 次）被判成「非本名」，
+  // 规范名退化成只出现 1 次的 `蕊珠` / `匡迥` —— 用户看到的实体名不是通行称呼。
+  //
+  // 为什么不直接删掉「人」：$0 预演（`_wb_canon_preview.ts`）实测宽口径会引入
+  // **两处退化**（`顾老相公 → 顾小舍人`、`尤老娘(28) → 尤老安人(1)`），
+  // 正是批 65 当初收「人」要防的那类。
+  //
+  // 折中判据：**仅当该「X人」键严格最高频**（高于其余任何成员键）时补进专名池。
+  // 严格版预演实测：只改 2 处、全部是真改进（`匡迥→匡超人`、`蕊珠→袭人`），零退化。
+  const renDominant = keys.filter((key) => {
+    if (!key.endsWith("人") || isProperNameForm(key)) return false;
+    const own = frequency.get(key) ?? 0;
+    return keys.every((other) => other === key || own > (frequency.get(other) ?? 0));
+  });
+
+  const pool =
+    proper.length > 0
+      ? [...proper, ...renDominant]
+      : renDominant.length > 0
+        ? renDominant
+        : keys;
 
   let best = "";
   let bestFrequency = -1;

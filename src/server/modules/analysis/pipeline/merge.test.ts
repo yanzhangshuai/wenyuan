@@ -586,3 +586,47 @@ describe("mergeEntities —— 声明式别名组（批次 43：补「同一人�
   });
 });
 
+describe("mergeEntities · 规范名选择（批 82：尾字「人」的严格最高频例外）", () => {
+  const canonicalOf = (input: {
+    canonical: string;
+    aliases  : string[];
+    frequency: [string, number][];
+  }): string | undefined => {
+    const outcome = mergeEntities({
+      entities     : [{ canonical: input.canonical, type: "PERSON", aliases: input.aliases }],
+      nameFrequency: new Map(input.frequency)
+    });
+    return outcome.entities[0]?.canonical;
+  };
+
+  it("「X人」严格最高频 → 选它（袭人 1140 > 蕊珠 1）", () => {
+    expect(
+      canonicalOf({ canonical: "蕊珠", aliases: ["袭人"], frequency: [["蕊珠", 1], ["袭人", 1140]] })
+    ).toBe("袭人");
+  });
+
+  it("「X人」非严格最高频 → 不选（尤老安人 1 < 尤老娘 28）", () => {
+    expect(
+      canonicalOf({
+        canonical: "尤老娘",
+        aliases  : ["尤老安人"],
+        frequency: [["尤老娘", 28], ["尤老安人", 1]]
+      })
+    ).toBe("尤老娘");
+  });
+
+  it("平局 → 不触发例外（顾小舍人 1 = 顾老相公 1，保持原规则）", () => {
+    const picked = canonicalOf({
+      canonical: "顾老相公",
+      aliases  : ["顾小舍人"],
+      frequency: [["顾老相公", 1], ["顾小舍人", 1]]
+    });
+    expect(picked).not.toBe("顾小舍人");
+  });
+
+  it("专名池非空时，「X人」仍可与专名竞争（匡超人 212 > 匡迥 1）", () => {
+    expect(
+      canonicalOf({ canonical: "匡迥", aliases: ["匡超人"], frequency: [["匡迥", 1], ["匡超人", 212]] })
+    ).toBe("匡超人");
+  });
+});
