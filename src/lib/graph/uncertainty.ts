@@ -60,6 +60,14 @@ export interface UncertaintyRelationInput {
   pairKey      : string;
   status       : string;
   evidenceCount: number;
+  /**
+   * 两端实体**共现段落数**（读侧计算）。
+   *
+   * 用途（批 81）：单源关系的「1 条证据」有两种含义 ——
+   * `<= 1` = 原文确实只有一处同场（真稀疏）；`>= 2` = 原文另有同场段落、证据疑被漏抽。
+   * 省略时按「未知」处理（文案不臆断）。
+   */
+  coOccurrenceParagraphs?: number;
 }
 
 export interface UncertaintyInput {
@@ -82,7 +90,8 @@ export const TYPE_SUSPECT_DETECTOR: DetectorIdentity = { id: "type_suspect", ver
 export const ALIAS_SUSPECT_DETECTOR: DetectorIdentity = { id: "alias_suspect", version: 1 };
 export const RELATION_SINGLE_SOURCE_DETECTOR: DetectorIdentity = {
   id     : "relation_single_source",
-  version: 1
+  // v2（批 81）：detail 按共现段数分档（真稀疏 / 疑证据漏抽），旧文案统一写「无法交叉自证」会误导。
+  version: 2
 };
 
 /** ④ 号检测器参数：两个实体各自至少被提及这么多次才进入候选（宁可少标）。 */
@@ -258,12 +267,25 @@ export function detectAliasSuspect(
 
 /* ── ⑤ 关系单源：只有一条原文证据 ─────────────────────────────── */
 
+/**
+ * 单源关系的两种含义（批 81 验收发现）：
+ * - `coOccurrenceParagraphs <= 1`：原文确实只有一处同场 → 真稀疏；
+ * - `>= 2`：原文另有同场段落 → 证据疑被漏抽（是**召回**问题，不是原文问题）。
+ * 旧文案统一写「无法交叉自证」会在后一类上误导。
+ */
 export function detectRelationSingleSource(
   relations: readonly UncertaintyRelationInput[]
 ): UncertaintyMark[] {
   const marks: UncertaintyMark[] = [];
   for (const relation of relations) {
     if (relation.evidenceCount !== 1) continue;
+    const co = relation.coOccurrenceParagraphs;
+    const detail =
+      co === undefined
+        ? `仅 1 条原文证据（${relation.status}），无法交叉自证`
+        : co <= 1
+          ? `仅 1 条原文证据，且原文只有这一处同场（${relation.status}）—— 真稀疏`
+          : `仅 1 条原文证据，但原文另有 ${String(co - 1)} 段同场（${relation.status}）—— 疑为证据漏抽`;
     marks.push({
       subjectType: "relationship",
       subjectId  : relation.id,
@@ -271,7 +293,7 @@ export function detectRelationSingleSource(
       kind       : "relation_single_source",
       detector   : { ...RELATION_SINGLE_SOURCE_DETECTOR },
       confidence : "high",
-      detail     : `仅 1 条原文证据（${relation.status}），无法交叉自证`
+      detail
     });
   }
   return marks;
@@ -284,7 +306,10 @@ export function computeUncertainty(input: UncertaintyInput): UncertaintyReport {
     ...detectNameIncomplete(input.entities),
     ...detectNameAmbiguous(input.entities),
     ...detectTypeSuspect(input.entities),
-    ...detectAliasSuspect(input.entities, input.relations),
+    // ④ detectAliasSuspect：**暂停产出**（设计文档 §3.7 修正案 5）。
+    // 验收实测确认它会误报「同姓但关系疏远」的不同人（`贾珍⇄贾珠`）；
+    // 重设计候选「别名语义重叠」预演 0 命中。代码与版本号保留，待专门批次重设计，
+    // **在此之前不得把 ④ 的标记用于任何结论**。
     ...detectRelationSingleSource(input.relations)
   ];
 

@@ -392,3 +392,63 @@ describe("groupMarksByKind（合成标记：同组混合置信度）", () => {
     expect(reversed[0]?.marks.map((m) => m.subjectId)).toEqual(["r1", "r2"]);
   });
 });
+
+describe("⑤ v2：单源关系按共现段数分档（批 81）", () => {
+  it("co<=1 → 文案写「真稀疏」", () => {
+    const marks = detectRelationSingleSource([
+      relation({ id: "r1", evidenceCount: 1, coOccurrenceParagraphs: 1 })
+    ]);
+    expect(marks[0]?.detail).toContain("真稀疏");
+    expect(marks[0]?.detector).toEqual({ id: "relation_single_source", version: 2 });
+  });
+
+  it("co>=2 → 文案写「疑为证据漏抽」并给出另一处同场段数", () => {
+    const marks = detectRelationSingleSource([
+      relation({ id: "r1", evidenceCount: 1, coOccurrenceParagraphs: 20 })
+    ]);
+    expect(marks[0]?.detail).toContain("疑为证据漏抽");
+    expect(marks[0]?.detail).toContain("19 段同场");
+  });
+
+  it("未提供共现段数 → 退回中性文案（不臆断）", () => {
+    const marks = detectRelationSingleSource([relation({ id: "r1", evidenceCount: 1 })]);
+    expect(marks[0]?.detail).toContain("无法交叉自证");
+  });
+});
+
+describe("④ 暂停产出（修正案 5）", () => {
+  it("computeUncertainty 不再产出 alias_suspect 标记（检测器函数仍保留）", () => {
+    const report = computeUncertainty({
+      entities: [
+        // 这对若走 ④ 会被标记（同姓、从不共段、章节重叠），但 ④ 已暂停产出
+        {
+          id             : "e1",
+          canonical      : "严大位",
+          type           : "PERSON",
+          aliasCount     : 0,
+          honorificForm  : false,
+          properNameForm : true,
+          gateRejection  : null,
+          mentionCount   : 8,
+          paragraphIds   : ["p1"],
+          chapterOrdinals: [1]
+        },
+        {
+          id             : "e2",
+          canonical      : "严致中",
+          type           : "PERSON",
+          aliasCount     : 0,
+          honorificForm  : false,
+          properNameForm : true,
+          gateRejection  : null,
+          mentionCount   : 8,
+          paragraphIds   : ["p9"],
+          chapterOrdinals: [1]
+        }
+      ],
+      relations: []
+    });
+    expect(report.marks.filter((m) => m.kind === "alias_suspect")).toHaveLength(0);
+    expect(report.coverage.byKind.find((k) => k.kind === "alias_suspect")?.count).toBe(0);
+  });
+});

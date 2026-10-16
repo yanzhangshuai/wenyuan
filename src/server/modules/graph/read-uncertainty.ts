@@ -173,9 +173,28 @@ export const loadUncertainty = cache(async (bookId: string): Promise<Uncertainty
     targetId: row.targetId,
     pairKey:
       `${nameById.get(row.sourceId) ?? "?"}⇄${nameById.get(row.targetId) ?? "?"}[${row.code}]`,
-    status       : row.status,
-    evidenceCount: evidenceCounts.get(row.id) ?? 0
+    status                : row.status,
+    evidenceCount         : evidenceCounts.get(row.id) ?? 0,
+    // 两端共现段落数（批 81）：单源关系的「1 条证据」需区分「真稀疏」与「证据漏抽」。
+    coOccurrenceParagraphs: countSharedParagraphs(
+      paragraphsByEntity.get(row.sourceId),
+      paragraphsByEntity.get(row.targetId)
+    )
   }));
 
   return computeUncertainty({ entities: entityInputs, relations: relationInputs });
 });
+
+/** 两个实体的提及段落集合交的大小；任一侧无提及时返回 0。 */
+function countSharedParagraphs(
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined
+): number {
+  if (left === undefined || right === undefined) return 0;
+  const leftSet = new Set(left);
+  let shared = 0;
+  for (const paragraphId of new Set(right)) {
+    if (leftSet.has(paragraphId)) shared += 1;
+  }
+  return shared;
+}
