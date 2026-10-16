@@ -103,18 +103,25 @@ describe("parseKnowledgeVerdict（保守判决：只能往下压）", () => {
     expect(verdict.confidence).toBe("none");
   });
 
-  it("resolved 但无值 / 无来源 → 降级为 unresolvable（不许编）", () => {
+  it("resolved 但无值 → unresolvable（不许编）", () => {
     const noValue = parseKnowledgeVerdict(
       JSON.stringify({ resolution: "resolved", confidence: "high", value: "", used_urls: [hit.url] }),
       [hit]
     );
     expect(noValue.resolution).toBe("unresolvable");
+  });
 
+  it("resolved 但未指明来源 → **保留值**、降 low、来源回落本次命中（批 84 实测修正）", () => {
+    // 🚨 这里**不能**降成 unresolvable：那会把「查得到」缓存成「查不到」，
+    // 后续运行直接跳过、永远修不回来（试点实测踩到过）。
     const noSource = parseKnowledgeVerdict(
       JSON.stringify({ resolution: "resolved", confidence: "high", value: "朱元璋", used_urls: [] }),
       [hit]
     );
-    expect(noSource.resolution).toBe("unresolvable");
+    expect(noSource.resolution).toBe("resolved");
+    expect(noSource.confidence).toBe("low");
+    expect(noSource.value).toBe("朱元璋");
+    expect(noSource.sourceUrls).toEqual([hit.url]);
   });
 
   it("来源必须来自本次命中（编造的 URL 被丢弃）", () => {
