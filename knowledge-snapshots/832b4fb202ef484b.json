@@ -1,0 +1,9 @@
+{
+  "_comment": "批次 1（2026-10-16）：检索「红楼梦 贾政」的真实结果。",
+  "query": "红楼梦 贾政",
+  "provider": "manual-websearch-2026-10-16",
+  "hits": [
+    { "title": "笑说红楼｜尴尬的贾政 - 澎湃新闻", "url": "https://www.thepaper.cn/newsDetail_forward_21044495", "snippet": "贾政，字存周，荣国公之孙，贾代善和贾母次子，是荣国府当下的堂堂老爷子，官至工部员外郎。" },
+    { "title": "贾政：你以为他只是从五品工部员外郎？那只是他最不值一提的身份", "url": "https://baijiahao.baidu.com/s?id=1820734812777169778&wfr=spider&for=pc", "snippet": "贾政字存周，明确他当家荣国府，与贾赦分袭荣国公世袭一等（镇国）将军；从五品工部员外郎只是他的职官。" }
+  ]
+}
