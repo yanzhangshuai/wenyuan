@@ -115,3 +115,51 @@ export interface GraphSnapshot {
    */
   codeStats         : GraphCodeStat[];
 }
+
+/* ────────────────────────────────────────────────────────────────
+ * 不确定性建模（设计文档：docs/plans/2026-10-16-不确定性建模-design.md）
+ *
+ * 三条铁律：不写图谱表 · 不进评测口径 · UI 分区。
+ * 修正案 1：每条标记必须携带 {detector.id, detector.version, confidence}。
+ * ──────────────────────────────────────────────────────────────── */
+
+/** 不确定性标记类别（第六类 `recall_suspect` 已验证可行，读侧接线待性能方案，见设计文档 §3.6）。 */
+export type UncertaintyKind =
+  | "name_incomplete"
+  | "name_ambiguous"
+  | "type_suspect"
+  | "alias_suspect"
+  | "relation_single_source";
+
+/** 标记置信度：检测器自身也可能有洞（§3.3），置信度是标记的必填件。 */
+export type UncertaintyConfidence = "high" | "medium" | "low";
+
+/** 一条不确定性标记（读时计算的确定性派生，不落库）。 */
+export interface UncertaintyMark {
+  subjectType: "entity" | "relationship";
+  subjectId  : string;
+  /** 展示用键：实体规范名 / 关系端点对（`甲⇄乙[码]`）。 */
+  subjectKey : string;
+  kind       : UncertaintyKind;
+  /** 检测器身份：版本化管理， detector 变更须走 $0 预演 + 对账（修正案 1）。 */
+  detector   : { id: string; version: number };
+  confidence : UncertaintyConfidence;
+  /** 一句话理由，供 UI 悬浮与人工抽查（自知准确率口径）。 */
+  detail     : string;
+}
+
+/** 不确定性覆盖率（双指标之一「表态率」的载体；「自知准确率」靠人工抽查样本另行统计）。 */
+export interface UncertaintyCoverage {
+  entityTotal   : number;
+  entityMarked  : number;
+  relationTotal : number;
+  relationMarked: number;
+  /** 各类别标记数（含 0 的类别也列出，保证报表稳定可比）。 */
+  byKind        : { kind: UncertaintyKind; count: number }[];
+}
+
+/** 不确定性报告：与 GraphSnapshot **并列**下发，永不合并进 snapshot。 */
+export interface UncertaintyReport {
+  marks   : UncertaintyMark[];
+  coverage: UncertaintyCoverage;
+}

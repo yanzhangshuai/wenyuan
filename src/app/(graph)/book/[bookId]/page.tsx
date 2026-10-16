@@ -4,6 +4,7 @@ import { Suspense, use } from "react";
 import { GraphView } from "@/components/graph/GraphView";
 import { GraphSkeleton } from "@/components/ui/states";
 import { loadGraphSnapshot } from "@/server/modules/graph/read-graph";
+import { loadUncertainty } from "@/server/modules/graph/read-uncertainty";
 
 /**
  * 作品人物关系图谱页（`(graph)` 路由组 —— 沉浸式全屏，无全局顶栏）。
@@ -30,17 +31,24 @@ export default async function BookGraphPage({ params }: BookGraphPageProps) {
 
   // Promise 在此创建、在 GraphSection 内消费 —— 服务端组件不会重渲染，因此不会重复请求。
   const snapshotPromise = loadGraphSnapshot(bookId);
+  // 不确定性报告（设计文档 §5.3）：与 snapshot **并列**下发，读时派生、不写图谱表。
+  const uncertaintyPromise = loadUncertainty(bookId);
 
   return (
     <Suspense fallback={<GraphSkeleton />}>
-      <GraphSection bookId={bookId} snapshotPromise={snapshotPromise} />
+      <GraphSection
+        bookId={bookId}
+        snapshotPromise={snapshotPromise}
+        uncertaintyPromise={uncertaintyPromise}
+      />
     </Suspense>
   );
 }
 
 interface GraphSectionProps {
-  bookId         : string;
-  snapshotPromise: ReturnType<typeof loadGraphSnapshot>;
+  bookId            : string;
+  snapshotPromise   : ReturnType<typeof loadGraphSnapshot>;
+  uncertaintyPromise: ReturnType<typeof loadUncertainty>;
 }
 
 /**
@@ -49,12 +57,13 @@ interface GraphSectionProps {
  * @param props 由页面创建的取数 Promise
  * @returns 图谱视图；作品不存在时抛 `notFound()`
  */
-function GraphSection({ bookId, snapshotPromise }: GraphSectionProps) {
+function GraphSection({ bookId, snapshotPromise, uncertaintyPromise }: GraphSectionProps) {
   const snapshot = use(snapshotPromise);
+  const uncertainty = use(uncertaintyPromise);
 
   if (snapshot === null) {
     notFound();
   }
 
-  return <GraphView bookId={bookId} snapshot={snapshot} />;
+  return <GraphView bookId={bookId} snapshot={snapshot} uncertainty={uncertainty} />;
 }

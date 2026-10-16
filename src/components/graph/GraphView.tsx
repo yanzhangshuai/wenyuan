@@ -15,9 +15,10 @@ import { ThemeToggle } from "@/components/theme";
 import { useHydratedTheme } from "@/hooks/use-hydrated-theme";
 import { sliceByChapter } from "@/lib/graph/chapter-slice";
 import { RELATION_GROUPS, getEdgeColorForCategory } from "@/lib/graph/grouping";
+import { UNCERTAINTY_KIND_LABELS } from "@/lib/graph/uncertainty";
 import type { RelationCategory } from "@/lib/relations";
 import { getEdgeTypeColorsForTheme } from "@/theme";
-import type { GraphSnapshot } from "@/types/graph";
+import type { GraphSnapshot, UncertaintyReport } from "@/types/graph";
 
 /**
  * 图谱视图容器（页面级交互编排）—— 三视图合一。
@@ -55,11 +56,16 @@ const VIEW_MODES: readonly { mode: GraphViewMode; label: string }[] = [
 
 export interface GraphViewProps {
   /** 当前作品 ID，用于面包屑与档案页跳转。 */
-  bookId  : string;
-  snapshot: GraphSnapshot;
+  bookId      : string;
+  snapshot    : GraphSnapshot;
+  /**
+   * 不确定性报告（全库口径，读时派生）。**与 snapshot 并列**，不参与切片/渲染逻辑；
+   * 一期只在信息头暴露计数，逐实体标注属二期（设计文档 §六：一二期捆绑交付）。
+   */
+  uncertainty?: UncertaintyReport | null;
 }
 
-export function GraphView({ bookId, snapshot }: GraphViewProps) {
+export function GraphView({ bookId, snapshot, uncertainty }: GraphViewProps) {
   const [mode, setMode] = useState<GraphViewMode>("full");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [matrixCell, setMatrixCell] = useState<{ codeA: string; codeB: string } | null>(null);
@@ -328,6 +334,18 @@ export function GraphView({ bookId, snapshot }: GraphViewProps) {
               <span className="graph-stage-metric-total"> / {snapshot.chapterCount}</span>
             </dd>
           </div>
+          {/* 不确定性计数（修正案 4：一二期捆绑的最小可见出口）。
+              全库口径、不随章节滑块变化；分类明细悬浮可见，逐实体标注属二期。 */}
+          {uncertainty !== null && uncertainty !== undefined ? (
+            <div className="graph-stage-metric">
+              <dt>不确定</dt>
+              <dd title={uncertainty.coverage.byKind
+                .map((entry) => `${UNCERTAINTY_KIND_LABELS[entry.kind]} ${entry.count}`)
+                .join(" · ")}>
+                {uncertainty.marks.length}
+              </dd>
+            </div>
+          ) : null}
         </dl>
 
         <div className="graph-stage-actions">
