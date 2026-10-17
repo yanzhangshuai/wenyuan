@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 6（2026-10-17）：真实检索结果快照（儒林 历史人物类称谓）。",
+  "query": "儒林外史 青田先生",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "刘基 - 百度百科",
+      "url": "https://baike.baidu.com/item/%E5%88%98%E5%9F%BA/1426",
+      "snippet": "刘基（1311年—1375年），字伯温，世称「刘青田」「刘诚意」「刘文成」，处州路青田县南田人，明初开国功臣。"
+    },
+    {
+      "title": "刘基，字伯温，青田人 - 百度教育",
+      "url": "https://easylearn.baidu.com/edu-page/tiangong/questiondetail?id=1726756054714592771&fr=search",
+      "snippet": "刘基，字伯温，是青田人。元至顺年间考中进士，博通经史，尤精象纬之学。"
+    }
+  ]
+}

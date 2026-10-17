@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 6（2026-10-17）：真实检索结果快照（儒林 历史人物类称谓）。",
+  "query": "儒林外史 成老爹",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "成老爹（五河乡下秀才、兴贩行行头）- 百度教育",
+      "url": "https://easylearn.baidu.com/edu-page/tiangong/questiondetail?id=1874264905300970617&fr=search",
+      "snippet": "成老爹是五河乡下人，是一个秀才，当了兴贩行的行头。因说假话，在虞华轩家饿了一顿肚子。"
+    },
+    {
+      "title": "《儒林外史》人物形象之虞华轩 - 哔哩哔哩",
+      "url": "https://www.bilibili.com/read/mobile?id=28668516",
+      "snippet": "一个专门撮合田产买卖的成老爹从乡下进城，跑到虞华轩家想说合他买一处田产；此人极其俗气，虞华轩打心底瞧不起他。"
+    }
+  ]
+}

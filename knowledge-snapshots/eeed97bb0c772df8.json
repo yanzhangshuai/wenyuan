@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 15（2026-10-17）：真实检索结果快照（儒林 末 2 个称谓型）。",
+  "query": "儒林外史 卞先生",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "《儒林外史》第五十五回（王太与马先生对弈）",
+      "url": "https://easylearn.baidu.com/edu-page/tiangong/questiondetail?id=1711956379148497077&fr=search",
+      "snippet": "王太与马先生下棋，「姓卞的」在旁观局，评道：「论这局面，却是马先生略负了些。」——书中只称姓卞，未给名字。"
+    },
+    {
+      "title": "第五十五回 添四客述往思来（原文）",
+      "url": "http://www.guoxue.com/minqingstory/rlws/rlws_055.htm",
+      "snippet": "第五十五回写南京四位市井奇人，其中有围棋高手王太；观棋的「姓卞的」为陪衬人物。"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 6（2026-10-17）：真实检索结果快照（儒林 历史人物类称谓）。",
+  "query": "儒林外史 天子",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "在《儒林外史》中，庄征君应诏觐见的皇帝是哪位君王？- 百度文库",
+      "url": "https://wenku.baidu.com/view/20c502a380868762caaedd3383c4bb4cf7ecb7b6.html",
+      "snippet": "庄征君在嘉靖三十五年十月初一日应诏觐见皇帝，据此可确定书中的「天子」指嘉靖帝。"
+    },
+    {
+      "title": "嘉靖皇帝 - 故宫博物院",
+      "url": "https://www.dpm.org.cn/court/lineage/226241.html",
+      "snippet": "明世宗嘉靖皇帝名朱厚熜，正德二年生于藩国安陆，因正德皇帝无子而继位。"
+    }
+  ]
+}

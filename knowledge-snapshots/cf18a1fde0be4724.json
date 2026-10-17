@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 12（2026-10-17）：真实检索结果快照（儒林 次要称谓型）。",
+  "query": "儒林外史 施二先生",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "清代葬事中的科举迷信——以《儒林外史》第四十四回为例 - 知网",
+      "url": "https://wap.cnki.net/qikan-XBXK202515023.html",
+      "snippet": "《儒林外史》第四十四回中，施二先生企图通过迁坟的方式求得科名转运，反映清代吉壤迷信。"
+    },
+    {
+      "title": "徐啸《闲扯儒林》第四十四回",
+      "url": "https://mp.weixin.qq.com/s?__biz=MzUzNjY2Nzg4MQ==&mid=2247655373&idx=1&sn=acfdfe6b032ef3c5217af0eadf4ca5f4&chksm=fbbffa257a37f1fa05bfcda69c1572c88b2305a9cdbc3649cd4127102479602906c0ffb5ded3&scene=27",
+      "snippet": "哥哥施御史是学霸，中了进士；弟弟施二先生是个学渣，不从自身找原因，反而听信风水先生去迁坟。"
+    }
+  ]
+}

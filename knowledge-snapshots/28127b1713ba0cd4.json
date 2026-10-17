@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 6（2026-10-17）：真实检索结果快照（儒林 历史人物类称谓）。",
+  "query": "儒林外史 宪宗皇帝",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "朱见深(明宪宗) - 百度百科",
+      "url": "https://baike.baidu.com/item/%E6%9C%B1%E8%A7%81%E6%B7%B1/7550168",
+      "snippet": "明宪宗朱见深（1447年—1487年），明英宗朱祁镇长子，明朝第八位皇帝，年号成化。"
+    },
+    {
+      "title": "成化皇帝 - 故宫博物院",
+      "url": "https://www.dpm.org.cn/court/lineage/226261.html",
+      "snippet": "8年后英宗去世，太子朱见深即皇帝位，次年改年号成化，是为明宪宗。"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 11（2026-10-17）：真实检索结果快照（儒林 次要称谓型）。",
+  "query": "儒林外史 汤相公",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "《儒林外史》汤相公拆卖房子 - 百度文库",
+      "url": "https://wenku.baidu.com/view/b2753195920590c69ec3d5bbfd0a79563c1ed4d0.html",
+      "snippet": "汤相公因缺钱拆卖了虞博士让他住的房子，之后向虞博士借银去典房居住，虞博士答应了他。"
+    },
+    {
+      "title": "汤相公因贫穷拆卖房子（原文对照）",
+      "url": "https://mp.weixin.qq.com/s?__biz=MzI3NTEwNzUzNA==&mid=2848541181&idx=1&sn=cb9d451d4d59c441c56d5cbdf690b5ed&chksm=c69ad691f4c3342e2e43a5367f28286ea9c3f84c66c2137842532f02f1d4f157b4b294f1f903&scene=27",
+      "snippet": "汤相公道：「我拆了房子，就没处住，所以来同表叔商量，借些银子去当几间屋住。」虞博士点头应允。"
+    }
+  ]
+}

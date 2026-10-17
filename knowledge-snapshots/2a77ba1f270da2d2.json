@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 8（2026-10-17）：真实检索结果快照（儒林 次要称谓型）。",
+  "query": "儒林外史 娄家两位公子",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "娄府两位公子（娄玉亭、娄瑟亭）- 百度教育",
+      "url": "https://easylearn.baidu.com/edu-page/tiangong/questiondetail?id=1853477242482643133&fr=search",
+      "snippet": "《儒林外史》中娄府两位公子为娄伯（娄玉亭）、娄仲（娄瑟亭），是湖州名士代表，热衷结交「贤士」。"
+    },
+    {
+      "title": "娄三娄四主要情节 - 百度文库",
+      "url": "http://wenku.baidu.com/search?fr=aladdin266&ind=0&word=%E5%84%92%E6%9E%97%E5%A4%96%E5%8F%B2+%E5%A8%84%E5%AE%B6%E4%B8%A4%E4%BD%8D%E5%85%AC%E5%AD%90+%E5%A8%84%E5%BA%9C+%E6%B9%96%E5%B7%9E",
+      "snippet": "娄琫（字玉亭）排行第三，娄瓒（字瑟亭）排行第四，是娄中堂家的两位公子，有钱有闲而热衷养士。"
+    }
+  ]
+}

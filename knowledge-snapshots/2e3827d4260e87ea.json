@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 9（2026-10-17）：真实检索结果快照（儒林 次要称谓型）。",
+  "query": "儒林外史 黄客人",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "《儒林外史》人物表（豆瓣笔记）",
+      "url": "https://book.douban.com/people/73495697/annotation/30151691/",
+      "snippet": "黄客人（牛浦郎岳父，戏子行头经济，淮安人），其女黄氏为牛浦郎第二任妻子。"
+    },
+    {
+      "title": "《儒林外史》中的吃喝：一碗绿豆汤引发的重婚案",
+      "url": "https://baijiahao.baidu.com/s?id=1682526675961743130&wfr=spider&for=pc",
+      "snippet": "牛浦郎在安东娶了黄氏；牛奶奶寻夫到安东时，遇上「牛布衣」和他的现任妻子黄氏。"
+    }
+  ]
+}

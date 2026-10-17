@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 11（2026-10-17）：真实检索结果快照（儒林 次要称谓型）。",
+  "query": "儒林外史 王老先生",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "儒林外史按人物出场顺序概括 - 百度文库",
+      "url": "https://wenku.baidu.com/view/9bd03300b4360b4c2e3f5727a5e9856a56122614.html",
+      "snippet": "人物表中多处出现「王老先生」一类称呼，均只记姓与「老先生」尊称，未给本名。"
+    },
+    {
+      "title": "《儒林外史》王太性格特点及事例",
+      "url": "https://localsite.baidu.com/site/wjzsorv8/8cd47d9a-7797-42f3-9306-b902ded71161?qaId=10234233&categoryLv1=教育培训&efs=1&ch=54&srcid=10014&source=natural&category=其他&eduFrom=136&botSourceType=46",
+      "snippet": "书中另有市井人物王太（卖火纸筒子），与「王老先生」并非同一称呼。"
+    }
+  ]
+}

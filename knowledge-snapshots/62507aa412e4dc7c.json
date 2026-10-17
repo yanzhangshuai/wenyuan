@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 8（2026-10-17）：真实检索结果快照（儒林 次要称谓型）。",
+  "query": "儒林外史 鲁夫人",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "《儒林外史》中的吃喝：鲁家父女的忧伤 - 百家号",
+      "url": "http://baijiahao.baidu.com/s?id=1703537391489502315&wfr=spider&for=pc",
+      "snippet": "鲁编修想娶如夫人以求生子，鲁夫人不同意，劝他年纪大了不必如此；可见鲁夫人为鲁编修之妻、鲁小姐之母。"
+    },
+    {
+      "title": "鲁编修 - 百度百科",
+      "url": "https://baike.baidu.com/item/%E9%B2%81%E7%BC%96%E4%BF%AE/1458290",
+      "snippet": "鲁编修年将五十而无子息，只有一女（鲁小姐），后招赘蘧公孙为婿。"
+    }
+  ]
+}

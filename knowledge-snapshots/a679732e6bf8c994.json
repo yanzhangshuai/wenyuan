@@ -1,0 +1,17 @@
+{
+  "_comment": "批次 4（2026-10-17）：真实检索结果快照（儒林 rich 档）。",
+  "query": "儒林外史 匡超人",
+  "provider": "manual-websearch-2026-10-17",
+  "hits": [
+    {
+      "title": "匡超人 - 百度百科",
+      "url": "https://baike.baidu.com/item/%E5%8C%A1%E8%B6%85%E4%BA%BA/4715777",
+      "snippet": "匡超人，原名匡迥，号超人，是吴敬梓长篇小说《儒林外史》中的虚构人物，温州府乐清县人。该角色最初以孝子形象登场，在父亲病重时悉心侍奉。"
+    },
+    {
+      "title": "匡迥(匡超人) 任务单 - 百度教育",
+      "url": "https://easylearn.baidu.com/edu-page/tiangong/questiondetail?id=1825076010366771939&fr=search",
+      "snippet": "匡超人原名匡迥，号超人，是《儒林外史》中性格极其丰富的文学形象，后随潘三替人考试，逐步堕落。"
+    }
+  ]
+}
