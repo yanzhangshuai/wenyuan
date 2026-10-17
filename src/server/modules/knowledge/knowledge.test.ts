@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -210,5 +213,19 @@ describe("formatKnowledgeSummary（两个消费方共用一份文案）", () => 
     expect(text).toContain("已跳过");
     expect(text).toContain("未配置检索源");
     expect(text).not.toContain("成本");
+  });
+});
+
+describe("run-agent 的环境加载顺序（批 92 实测缺陷的护栏）", () => {
+  it("先 ensureEnvLoaded 再 resolveSearchProvider（否则 .env 里的 key 读不到）", () => {
+    // 缺陷现象：getServerEnv() 惰性触发（首次连库），而检索源判断发生在连库之前
+    // → 写在 .env 里的 SEARCH_API_KEY 读不到，报误导性的「未配置检索源」。
+    const raw = readFileSync(path.resolve(process.cwd(), "src/server/modules/knowledge/run-agent.ts"), "utf8");
+    const code = raw.replace(/\/\*[\s\S]*?\*\//gu, "").replace(/(^|[^:])\/\/[^\n]*/gu, "$1");
+    const loadIndex = code.indexOf("ensureEnvLoaded()");
+    const resolveIndex = code.indexOf("resolveSearchProvider(process.env)");
+    expect(loadIndex).toBeGreaterThan(-1);
+    expect(resolveIndex).toBeGreaterThan(-1);
+    expect(loadIndex).toBeLessThan(resolveIndex);
   });
 });

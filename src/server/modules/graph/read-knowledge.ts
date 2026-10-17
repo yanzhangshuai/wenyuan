@@ -1,9 +1,9 @@
 import "server-only";
 
+import { eq } from "drizzle-orm";
 import { connection } from "next/server";
 import { cache } from "react";
 
-import { eq } from "drizzle-orm";
 
 import { getDatabase } from "@/server/db/client";
 import { entities, entityAliases } from "@/server/db/schema";

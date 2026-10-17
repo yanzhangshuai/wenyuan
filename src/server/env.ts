@@ -70,6 +70,25 @@ let infraCache: ServerEnv | null = null;
 let aiCache: AiEnv | null = null;
 let budgetCache: BudgetEnv | null = null;
 
+/** `.env` 是否已尝试加载（幂等标记）。 */
+let envFileLoaded = false;
+
+/**
+ * 确保仓库根的 `.env` 已加载进 `process.env`（幂等，可反复调用）。
+ *
+ * 为什么需要显式调用：`getServerEnv()` 是**惰性**的，只在首次连库时才触发；
+ * 而判定层要**先**读 `process.env` 判断检索源、**后**才连库 ——
+ * 若不提前加载，写在 `.env` 里的 `SEARCH_API_KEY` 会读不到，
+ * 报出误导性的「未配置检索源」。
+ */
+export function ensureEnvLoaded(): void {
+  if (envFileLoaded) return;
+  envFileLoaded = true;
+  if (existsSync(".env")) {
+    process.loadEnvFile(".env");
+  }
+}
+
 /** 校验失败时抛出的统一错误（含全部问题项，便于一次改正）。 */
 function buildValidationError(scope: string, error: z.ZodError): Error {
   const detail = error.issues
@@ -90,9 +109,7 @@ export function getServerEnv(): ServerEnv {
   }
 
   // Node 内置 .env 解析，无需引入 dotenv。
-  if (existsSync(".env")) {
-    process.loadEnvFile(".env");
-  }
+  ensureEnvLoaded();
 
   const parsed = infraEnvSchema.safeParse(process.env);
   if (!parsed.success) {

@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/server/db/client";
 import { books, entities, entityAliases, entityMentions } from "@/server/db/schema";
+import { ensureEnvLoaded } from "@/server/env";
 import { callWithRetry, getModelSnapshot } from "@/server/modules/ai/client";
 import { isHonorificForm } from "@/server/modules/analysis/pipeline/name-form";
 
@@ -74,6 +75,11 @@ const EMPTY: Omit<KnowledgeRunSummary, "skippedReason" | "providerName"> = {
 };
 
 export async function runKnowledgeAgent(options: KnowledgeRunOptions = {}): Promise<KnowledgeRunSummary> {
+  // 🚨 必须先加载 `.env` 再读检索源配置：`getServerEnv()` 是惰性的（首次连库才触发），
+  // 而这里要**先**判断检索源、**后**才连库 —— 否则写在 `.env` 里的 SEARCH_API_KEY 读不到，
+  // 会报出误导性的「未配置检索源」（批 92 实测）。
+  ensureEnvLoaded();
+
   const provider = resolveSearchProvider(process.env);
   if (provider === null && options.dryRun !== true) {
     const reason = "未配置检索源（SEARCH_API_URL + SEARCH_API_KEY 或 SEARCH_FIXTURE_DIR）";
