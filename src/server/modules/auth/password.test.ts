@@ -39,8 +39,19 @@ describe("hashPassword / verifyPassword", () => {
   it("篡改哈希或盐后验证失败", async () => {
     const stored = await hashPassword("Wenyuan@2026");
     const parts = stored.split("$");
-    const tamperedHash = [...parts.slice(0, 5), parts[5]?.replace(/^./u, "0")].join("$");
-    const tamperedSalt = [...parts.slice(0, 4), parts[4]?.replace(/^./u, "1"), parts[5]].join("$");
+
+    // 必须**确定性地**改掉首字符：早先写成「替换为 0 / 1」，
+    // 当原字符恰好等于替换值时等于没改，测试随机假红（盐是随机的）。
+    const flipFirst = (hex: string): string =>
+      (hex.startsWith("a") ? "b" : "a") + hex.slice(1);
+
+    const hashHex = parts[5] ?? "";
+    const saltHex = parts[4] ?? "";
+    const tamperedHash = [...parts.slice(0, 5), flipFirst(hashHex)].join("$");
+    const tamperedSalt = [...parts.slice(0, 4), flipFirst(saltHex), parts[5]].join("$");
+
+    expect(tamperedHash).not.toBe(stored);
+    expect(tamperedSalt).not.toBe(stored);
     expect(await verifyPassword("Wenyuan@2026", tamperedHash)).toBe(false);
     expect(await verifyPassword("Wenyuan@2026", tamperedSalt)).toBe(false);
   });

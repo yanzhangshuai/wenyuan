@@ -1,18 +1,16 @@
-import { eq } from "drizzle-orm";
-
 import { AUTH_ADMIN_ROLE } from "@/lib/auth";
-import { getDatabase } from "@/server/db/client";
-import { users } from "@/server/db/schema";
-import { hashPassword } from "@/server/modules/auth/password";
+import { seedAdminAccount } from "@/server/modules/auth/seed";
 
 /**
- * 创建/更新管理员账号（幂等）。
+ * 创建/重置管理员（`pnpm seed:admin`）。
  *
  * 用法：
- *   pnpm seed:admin --email admin@example.com --password '至少8位' --name 管理员
+ *   pnpm seed:admin --email admin@example.com --password '至少8位' [--name 管理员] [--username admin]
  *
- * 也可用环境变量：`ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME`。
- * 已存在同邮箱账号时**更新密码与角色**（便于找回访问权），不新建重复账号。
+ * 也可用环境变量：`ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` / `ADMIN_USERNAME`。
+ * 已存在同邮箱账号时**更新密码与角色**（生产找回访问权的标准路径），不新建重复账号。
+ *
+ * 完整种子数据请用 `pnpm db:seed`；本命令用于「只改管理员密码」。
  */
 
 interface Options {
@@ -22,6 +20,7 @@ interface Options {
   username: string | null;
 }
 
+/** 解析命令行参数。 */
 function parseArgs(argv: readonly string[]): Options {
   const options: Options = { email: null, password: null, name: null, username: null };
   for (let i = 0; i < argv.length; i += 1) {
@@ -53,41 +52,10 @@ async function main(): Promise<void> {
     return;
   }
 
-  const db = getDatabase();
-  const passwordHash = await hashPassword(password);
-
-  const existing = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
-
-  if (existing.length > 0) {
-    const id = existing[0]?.id;
-    if (id === undefined) return;
-    await db
-      .update(users)
-      .set({
-        passwordHash,
-        name,
-        role     : AUTH_ADMIN_ROLE,
-        isActive : true,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, id));
-    console.log(`[seed-admin] 已更新管理员：${email}`);
-    return;
-  }
-
-  await db.insert(users).values({
-    email,
-    username,
-    name,
-    passwordHash,
-    role    : AUTH_ADMIN_ROLE,
-    isActive: true
-  });
-  console.log(`[seed-admin] 已创建管理员：${email}（用户名 ${username}）`);
+  const outcome = await seedAdminAccount({ email, password, name, username });
+  console.log(
+    `[seed-admin] 已${outcome.action === "created" ? "创建" : "更新"}管理员：${outcome.email}（角色 ${AUTH_ADMIN_ROLE}）`
+  );
 }
 
 try {
