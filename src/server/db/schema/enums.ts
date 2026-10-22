@@ -1,5 +1,6 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
+import { AUTH_ROLES } from "@/lib/auth";
 import { ENTITY_TYPES } from "@/lib/entities";
 
 /**
@@ -11,6 +12,9 @@ import { ENTITY_TYPES } from "@/lib/entities";
  * - 字符串取值与 v1 金标 `scripts/goldset/schema.ts`、关系码目录
  *   `scripts/skills/classical-relationship-types.md` 严格一致，保证评测口径不变。
  */
+
+/** 用户角色：取值来源见 `@/lib/auth`（前后端共用一份）。 */
+export const appRoleEnum = pgEnum("app_role", AUTH_ROLES);
 
 /** 作品解析状态。 */
 export const bookStatusEnum = pgEnum("book_status", ["pending", "parsing", "ready", "failed"]);

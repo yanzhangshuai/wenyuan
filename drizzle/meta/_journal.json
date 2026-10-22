@@ -22,6 +22,13 @@
       "when": 1792144424869,
       "tag": "0002_wide_stryfe",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792640073366,
+      "tag": "0003_married_tarantula",
+      "breakpoints": true
     }
   ]
 }

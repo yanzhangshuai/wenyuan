@@ -9,4 +9,5 @@ export * from "./entities";
 export * from "./enums";
 export * from "./knowledge";
 export * from "./relations";
+export * from "./users";
 export * from "./books";

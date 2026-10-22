@@ -157,10 +157,10 @@ export async function runKnowledgeAgent(options: KnowledgeRunOptions = {}): Prom
 
     console.log(`\n=== ${book.title}：触发 ${String(targets.length)} 个对象（已跳过 ${String(existingKeys.size)} 条已缓存） ===`);
     if (options.dryRun === true) {
-      for (const target of targets.slice(0, 20)) {
+      // dry-run 无成本，默认列全量（批量补数据时要靠它规划批次）。
+      for (const target of targets) {
         console.log(`   [${target.field}] ${target.subjectKey} — ${target.reason}`);
       }
-      if (targets.length > 20) console.log(`   …其余 ${String(targets.length - 20)} 个省略`);
       continue;
     }
 

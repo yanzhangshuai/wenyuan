@@ -1,0 +1,203 @@
+import { ArrowLeft, ExternalLink } from "lucide-react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { loadBookDetail } from "@/server/modules/admin/books-query";
+
+/**
+ * 书籍详情（只读）。
+ *
+ * 信息分层：规模指标 → 解析运行记录 → 章节清单。
+ * 不在此页触发任何写操作（解析走终端），避免把付费长任务塞进请求生命周期。
+ */
+/**
+ * 显式声明「本路由阻塞渲染」。
+ *
+ * v3 开启了 `cacheComponents`：未缓存的数据访问（DB / Cookie）默认会阻塞预渲染并报警。
+ * 后台与登录页都必须读到实时数据，因此这里按 Next 16 的建议声明 `instant = false`，
+ * 而不是把整页塞进 Suspense 做无意义的骨架屏。
+ */
+export const instant = false;
+
+export const metadata: Metadata = { title: "书籍详情" };
+
+/** 状态中文名与徽标变体。 */
+const STATUS_META: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
+  pending: { label: "待解析", variant: "secondary" },
+  parsing: { label: "解析中", variant: "secondary" },
+  ready  : { label: "已就绪", variant: "default" },
+  failed : { label: "失败", variant: "destructive" }
+};
+
+/** 运行状态中文名。 */
+const RUN_LABELS: Record<string, string> = {
+  running  : "运行中",
+  succeeded: "成功",
+  failed   : "失败",
+  canceled : "已取消"
+};
+
+/** 成本格式（`null` 显示破折号）。 */
+function formatCost(value: string | null): string {
+  if (value === null) return "—";
+  return `$${value}`;
+}
+
+/** 时间格式。 */
+function formatTime(value: Date | null): string {
+  if (value === null) return "—";
+  return new Intl.DateTimeFormat("zh-CN", {
+    year  : "numeric",
+    month : "2-digit",
+    day   : "2-digit",
+    hour  : "2-digit",
+    minute: "2-digit"
+  }).format(value);
+}
+
+export default async function AdminBookDetailPage({
+  params
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const detail = await loadBookDetail(id);
+  if (detail === null) notFound();
+
+  const { book, chapters, runs } = detail;
+  const status = STATUS_META[book.status] ?? { label: book.status, variant: "secondary" as const };
+  const totalChars = chapters.reduce((sum, chapter) => sum + chapter.charCount, 0);
+
+  return (
+    <div className="mx-auto w-full max-w-[1440px] px-6 py-8">
+      <Button asChild variant="ghost" size="sm" className="mb-4 gap-2">
+        <Link href="/admin/books">
+          <ArrowLeft className="h-4 w-4" />
+          返回书籍列表
+        </Link>
+      </Button>
+
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="font-serif text-2xl font-semibold">{book.title}</h1>
+            <Badge variant={status.variant}>{status.label}</Badge>
+          </div>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {book.author ?? "作者未填"} · {book.chapterCount} 章 ·{" "}
+            {totalChars.toLocaleString("zh-CN")} 字
+          </p>
+        </div>
+        <Button asChild variant="outline" className="gap-2">
+          <Link href={`/book/${book.id}`}>
+            打开图谱
+            <ExternalLink className="h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+
+      <div className="mb-8 grid gap-4 sm:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>实体</CardDescription>
+            <CardTitle className="text-2xl">{book.entityCount}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>关系</CardDescription>
+            <CardTitle className="text-2xl">{book.relationCount}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>解析次数</CardDescription>
+            <CardTitle className="text-2xl">{runs.length}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>最近成本</CardDescription>
+            <CardTitle className="text-2xl">
+              {formatCost(book.lastRunCostUsd)}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg">解析运行</CardTitle>
+          <CardDescription>按开始时间倒序；成本为该 run 全部调用的累计值</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {runs.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              还没有解析记录。在终端运行 <code>pnpm analyze {book.id}</code> 后再回来查看。
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead className="text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-2 text-left font-medium">开始</th>
+                    <th className="px-2 py-2 text-left font-medium">状态</th>
+                    <th className="px-2 py-2 text-left font-medium">提示词版本</th>
+                    <th className="px-2 py-2 text-right font-medium">调用数</th>
+                    <th className="px-2 py-2 text-right font-medium">成本</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {runs.map((run) => (
+                    <tr key={run.id}>
+                      <td className="text-muted-foreground px-2 py-2 text-xs">{formatTime(run.startedAt)}</td>
+                      <td className="px-2 py-2">{RUN_LABELS[run.status] ?? run.status}</td>
+                      <td className="text-muted-foreground px-2 py-2 font-mono text-xs">{run.promptVersion}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{run.callCount}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">
+                        {formatCost(run.costUsd)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">章节</CardTitle>
+          <CardDescription>回号 0 为前言等前置内容</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="max-h-[420px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="text-muted-foreground sticky top-0 bg-background">
+                <tr>
+                  <th className="px-2 py-2 text-left font-medium">回号</th>
+                  <th className="px-2 py-2 text-left font-medium">标题</th>
+                  <th className="px-2 py-2 text-right font-medium">字数</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {chapters.map((chapter) => (
+                  <tr key={chapter.ordinal}>
+                    <td className="px-2 py-2 tabular-nums">{chapter.ordinal}</td>
+                    <td className="px-2 py-2">{chapter.title}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{chapter.charCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
