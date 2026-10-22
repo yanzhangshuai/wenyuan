@@ -39,10 +39,10 @@ describe("中间件门禁", () => {
 });
 
 describe("后台布局二次鉴权", () => {
-  it("读取会话；页面层只要求已登录（VIEWER 可只读）", () => {
+  it("读取会话并要求 ADMIN 角色", () => {
     expect(adminLayout).toContain("getAuthContext");
-    // 若布局层卡 ADMIN，自助注册的 VIEWER 会被立刻踢回登录页（注册即死循环）。
-    expect(adminLayout).not.toContain("auth.role !==");
+    expect(adminLayout).toContain("AUTH_ADMIN_ROLE");
+    expect(adminLayout).toMatch(/if\s*\(\s*auth\.role\s*!==\s*AUTH_ADMIN_ROLE\s*\)/u);
   });
 
   it("未通过时 redirect 到登录页（而非渲染内容）", () => {
@@ -54,6 +54,10 @@ describe("后台布局二次鉴权", () => {
     // 变异教训：只断言 `toContain("getAuthContext")` 时，
     // 删掉守卫分支后 import 仍会命中，测试假绿。
     expect(adminLayout).toMatch(/if\s*\(\s*auth\s*===\s*null\s*\)/u);
+  });
+
+  it("非管理员被弹回首页（不暴露后台）", () => {
+    expect(adminLayout).toContain('redirect("/")');
   });
 
   it("使用 header 壳层（本期不引入侧边栏）", () => {

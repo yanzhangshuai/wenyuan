@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   AUTH_DEFAULT_REDIRECT,
+  AUTH_ROLE_LABELS,
+  AUTH_USER_HOME,
+  defaultRedirectForRole,
+  resolvePostLoginRedirect,
   isAcceptablePassword,
   isAdminRole,
   isValidEmail,
@@ -67,6 +71,33 @@ describe("账号字段校验", () => {
 
   it("邮箱归一化去空格并小写", () => {
     expect(normalizeEmail("  Admin@WenYuan.Local ")).toBe("admin@wenyuan.local");
+  });
+});
+
+describe("登录落点（角色感知）", () => {
+  it("管理员进后台，普通用户进书库", () => {
+    expect(defaultRedirectForRole("ADMIN")).toBe(AUTH_DEFAULT_REDIRECT);
+    expect(defaultRedirectForRole("VIEWER")).toBe(AUTH_USER_HOME);
+  });
+
+  it("带 redirect 时按清洗结果跳转", () => {
+    expect(resolvePostLoginRedirect("/book/abc", "VIEWER")).toBe("/book/abc");
+    expect(resolvePostLoginRedirect("/admin/books", "ADMIN")).toBe("/admin/books");
+  });
+
+  it("普通用户带 /admin 回跳 → 拦回书库（避免被守卫弹一次）", () => {
+    expect(resolvePostLoginRedirect("/admin", "VIEWER")).toBe(AUTH_USER_HOME);
+    expect(resolvePostLoginRedirect("/admin/books", "VIEWER")).toBe(AUTH_USER_HOME);
+  });
+
+  it("非法 redirect 回退到角色默认落点", () => {
+    expect(resolvePostLoginRedirect("//evil.com", "ADMIN")).toBe(AUTH_DEFAULT_REDIRECT);
+    expect(resolvePostLoginRedirect("//evil.com", "VIEWER")).toBe(AUTH_USER_HOME);
+  });
+
+  it("角色中文名为「管理员 / 用户」", () => {
+    expect(AUTH_ROLE_LABELS.ADMIN).toBe("管理员");
+    expect(AUTH_ROLE_LABELS.VIEWER).toBe("用户");
   });
 });
 

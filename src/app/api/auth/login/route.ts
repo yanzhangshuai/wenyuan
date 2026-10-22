@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { sanitizeRedirectPath } from "@/lib/auth";
+import { resolvePostLoginRedirect } from "@/lib/auth";
 import { jsonFail, jsonOk, readJson } from "@/server/http/json";
 import {
   loginRateLimiter,
@@ -52,7 +52,8 @@ export async function POST(request: Request): Promise<Response> {
   await createSession(result.value);
 
   return jsonOk({
-    redirect: sanitizeRedirectPath(parsed.data.redirect),
+    // 落点按角色决定：管理员进后台，普通用户进书库；普通用户带 /admin 的回跳会被拦下。
+    redirect: resolvePostLoginRedirect(parsed.data.redirect, result.value.role),
     user    : { name: result.value.name, role: result.value.role }
   });
 }

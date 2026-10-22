@@ -1,3 +1,4 @@
+import { ensureEnvLoaded } from "@/server/env";
 import { seedAdminAccount } from "@/server/modules/auth/seed";
 import { describeDatabaseUrl, resolveSeedPlan } from "@/server/modules/seed/plan";
 import { checkSchemaReadiness, seedRelationTypes } from "@/server/modules/seed/relation-types";
@@ -10,8 +11,9 @@ import { checkSchemaReadiness, seedRelationTypes } from "@/server/modules/seed/r
  *   pnpm db:seed --dry-run          # 只检查配置与表结构，不写入
  *   pnpm db:seed --skip-admin       # 只同步字典（管理员另行创建）
  *
- * 管理员配置（二选一，建议写进部署环境变量而不是命令行，避免进 shell history）：
+ * 管理员配置：写进 `.env`（推荐）或部署环境变量，避免进 shell history：
  *   ADMIN_EMAIL / ADMIN_PASSWORD [/ ADMIN_NAME / ADMIN_USERNAME]
+ *   本脚本会主动加载仓库根的 `.env`，因此直接写 `.env` 即可生效。
  *
  * 幂等性：两项都是 upsert，可重复执行；不会删除任何既有数据。
  *
@@ -22,6 +24,10 @@ import { checkSchemaReadiness, seedRelationTypes } from "@/server/modules/seed/r
  */
 
 async function main(): Promise<void> {
+  // 🚨 必须先加载 `.env` 再读 ADMIN_*：`getServerEnv()` 是惰性的（首次连库才触发），
+  // 否则把管理员凭据写进 `.env` 会读不到，命令却报「未设置 ADMIN_EMAIL」。
+  ensureEnvLoaded();
+
   const plan = resolveSeedPlan(process.argv.slice(2), process.env);
 
   console.log(`[seed] 目标数据库：${describeDatabaseUrl(process.env.DATABASE_URL)}`);

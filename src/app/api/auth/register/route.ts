@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AUTH_DEFAULT_REDIRECT } from "@/lib/auth";
+import { defaultRedirectForRole } from "@/lib/auth";
 import { jsonFail, jsonOk, readJson } from "@/server/http/json";
 import { registerUser } from "@/server/modules/auth/service";
 import { createSession } from "@/server/modules/auth/session";
@@ -43,7 +43,8 @@ export async function POST(request: Request): Promise<Response> {
 
   await createSession(result.value);
   return jsonOk({
-    redirect: AUTH_DEFAULT_REDIRECT,
+    // 自助注册一律 VIEWER，落点是书库首页（不是后台）。
+    redirect: defaultRedirectForRole(result.value.role),
     user    : { name: result.value.name, role: result.value.role }
   }, 201);
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AdminHeader } from "@/components/layout/admin-header";
-import { sanitizeRedirectPath } from "@/lib/auth";
+import { AUTH_ADMIN_ROLE, sanitizeRedirectPath } from "@/lib/auth";
 import { getAuthContext } from "@/server/modules/auth/session";
 
 /**
@@ -13,10 +13,10 @@ import { getAuthContext } from "@/server/modules/auth/session";
  * - 布局层是业务兜底，且这里是**唯一回查 `is_active` 的地方**——
  *   停用账号即使持有未过期令牌也会被挡下。
  *
- * 为什么这里只要求「已登录」而不要求 ADMIN：
- * 自助注册的账号是 `VIEWER`（只读）。若布局层卡 ADMIN，注册成功后会被立刻踢回登录页，
- * 形成死循环。正确分工是：**页面可读（任意已登录角色）**，**写操作单独校验 ADMIN**
- * （见 `/api/admin/import`）。
+ * 为什么这里要求 ADMIN：
+ * 后台是**管理员专用**。普通用户（自助注册的 VIEWER）登录后落点是书库首页，
+ * 不应看到后台；即使手动访问 `/admin` 也会被弹回首页。
+ * 早期版本曾允许 VIEWER 只读，但那样会让「用户登录」落到一个他不该看到的后台界面。
  */
 /**
  * 显式声明「本路由阻塞渲染」。
@@ -36,6 +36,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const auth = await getAuthContext();
   if (auth === null) {
     redirect(`/login?redirect=${encodeURIComponent(sanitizeRedirectPath("/admin"))}`);
+  }
+  if (auth.role !== AUTH_ADMIN_ROLE) {
+    // 已登录但不是管理员：回书库首页，不暴露后台任何内容。
+    redirect("/");
   }
 
   return (

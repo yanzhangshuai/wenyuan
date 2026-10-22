@@ -1,4 +1,5 @@
 import { AUTH_ADMIN_ROLE } from "@/lib/auth";
+import { ensureEnvLoaded } from "@/server/env";
 import { seedAdminAccount } from "@/server/modules/auth/seed";
 
 /**
@@ -7,7 +8,7 @@ import { seedAdminAccount } from "@/server/modules/auth/seed";
  * 用法：
  *   pnpm seed:admin --email admin@example.com --password '至少8位' [--name 管理员] [--username admin]
  *
- * 也可用环境变量：`ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` / `ADMIN_USERNAME`。
+ * 也可写进 `.env`（推荐）：`ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` / `ADMIN_USERNAME`。
  * 已存在同邮箱账号时**更新密码与角色**（生产找回访问权的标准路径），不新建重复账号。
  *
  * 完整种子数据请用 `pnpm db:seed`；本命令用于「只改管理员密码」。
@@ -35,6 +36,9 @@ function parseArgs(argv: readonly string[]): Options {
 }
 
 async function main(): Promise<void> {
+  // 同 `scripts/seed.ts`：先加载 `.env`，否则 `.env` 里的 ADMIN_* 读不到。
+  ensureEnvLoaded();
+
   const cli = parseArgs(process.argv.slice(2));
   const email = (cli.email ?? process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const password = cli.password ?? process.env.ADMIN_PASSWORD ?? "";

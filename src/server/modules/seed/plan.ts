@@ -17,15 +17,15 @@ export interface SeedAdminInput {
 /** 执行计划。 */
 export interface SeedPlan {
   /** 只检查不写入。 */
-  dryRun       : boolean;
+  dryRun         : boolean;
   /** 是否同步关系类型字典（总是 true，保留字段便于将来扩展）。 */
-  relationTypes: boolean;
+  relationTypes  : boolean;
   /** 管理员配置；`null` 表示本次跳过。 */
-  admin        : SeedAdminInput | null;
+  admin          : SeedAdminInput | null;
   /** 跳过管理员的原因（用于输出，不是错误）。 */
   adminSkipReason: string | null;
   /** 配置错误（非空则命令以退出码 2 结束，且**不执行任何写入**）。 */
-  errors       : string[];
+  errors         : string[];
 }
 
 /** 密码最小长度（与注册校验保持一致）。 */
@@ -65,9 +65,9 @@ export function resolveSeedPlan(
   if (skipAdmin) {
     return {
       dryRun,
-      relationTypes   : true,
-      admin           : null,
-      adminSkipReason : "已指定 --skip-admin",
+      relationTypes  : true,
+      admin          : null,
+      adminSkipReason: "已指定 --skip-admin",
       errors
     };
   }
@@ -78,9 +78,9 @@ export function resolveSeedPlan(
   if (!hasEmail && !hasPassword) {
     return {
       dryRun,
-      relationTypes   : true,
-      admin           : null,
-      adminSkipReason : "未设置 ADMIN_EMAIL / ADMIN_PASSWORD（仅同步关系类型字典）",
+      relationTypes  : true,
+      admin          : null,
+      adminSkipReason: "未设置 ADMIN_EMAIL / ADMIN_PASSWORD（仅同步关系类型字典）",
       errors
     };
   }
@@ -103,9 +103,9 @@ export function resolveSeedPlan(
 
   return {
     dryRun,
-    relationTypes   : true,
-    admin           : { email, password, name, username },
-    adminSkipReason : null,
+    relationTypes  : true,
+    admin          : { email, password, name, username },
+    adminSkipReason: null,
     errors
   };
 }

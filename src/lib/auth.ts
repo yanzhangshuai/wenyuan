@@ -27,7 +27,7 @@ export const AUTH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
 /** 角色中文名（UI 与审计日志共用）。 */
 export const AUTH_ROLE_LABELS: Record<AuthRole, string> = {
   ADMIN : "管理员",
-  VIEWER: "访客"
+  VIEWER: "用户"
 };
 
 /** 是否管理员。 */
@@ -35,8 +35,24 @@ export function isAdminRole(role: string | null | undefined): boolean {
   return role === AUTH_ADMIN_ROLE;
 }
 
-/** 登录后默认落点。 */
+/** 管理员登录后的默认落点。 */
 export const AUTH_DEFAULT_REDIRECT = "/admin";
+
+/** 普通用户登录后的默认落点（书库首页）。 */
+export const AUTH_USER_HOME = "/";
+
+/**
+ * 按角色给出登录后的默认落点。
+ *
+ * 管理员进后台，普通用户进前台书库——两者看到的是完全不同的界面，
+ * 因此不能共用一个默认值。
+ *
+ * @param role 角色
+ * @returns 默认路径
+ */
+export function defaultRedirectForRole(role: AuthRole): string {
+  return role === AUTH_ADMIN_ROLE ? AUTH_DEFAULT_REDIRECT : AUTH_USER_HOME;
+}
 
 /**
  * 清洗登录后的跳转目标。
@@ -47,14 +63,42 @@ export const AUTH_DEFAULT_REDIRECT = "/admin";
  * 3. 拒绝回到登录页（避免「登录 → 又回登录页」的循环）。
  *
  * @param value 原始 `redirect` 查询参数
+ * @param fallback 非法时回退的路径（默认后台首页）
  * @returns 可安全跳转的站内路径
  */
-export function sanitizeRedirectPath(value: string | null | undefined): string {
-  if (typeof value !== "string" || value.length === 0) return AUTH_DEFAULT_REDIRECT;
-  if (!value.startsWith("/")) return AUTH_DEFAULT_REDIRECT;
-  if (value.startsWith("//") || value.startsWith("/\\")) return AUTH_DEFAULT_REDIRECT;
-  if (value === "/login" || value.startsWith("/login?")) return AUTH_DEFAULT_REDIRECT;
+export function sanitizeRedirectPath(
+  value: string | null | undefined,
+  fallback: string = AUTH_DEFAULT_REDIRECT
+): string {
+  if (typeof value !== "string" || value.length === 0) return fallback;
+  if (!value.startsWith("/")) return fallback;
+  if (value.startsWith("//") || value.startsWith("/\\")) return fallback;
+  if (value === "/login" || value.startsWith("/login?")) return fallback;
   return value;
+}
+
+/**
+ * 计算登录后的最终落点（含越权拦截）。
+ *
+ * 规则：
+ * 1. 先按角色给出默认落点；
+ * 2. 若带了 `redirect`，清洗后采用；
+ * 3. **普通用户不能落到 `/admin` 下**（否则会被后台守卫弹回，形成一次无意义的跳转）。
+ *
+ * @param requested 原始 `redirect` 参数
+ * @param role 已认证角色
+ * @returns 可安全跳转的路径
+ */
+export function resolvePostLoginRedirect(
+  requested: string | null | undefined,
+  role: AuthRole
+): string {
+  const fallback = defaultRedirectForRole(role);
+  const target = sanitizeRedirectPath(requested, fallback);
+  if (role !== AUTH_ADMIN_ROLE && (target === "/admin" || target.startsWith("/admin/"))) {
+    return fallback;
+  }
+  return target;
 }
 
 /** 密码最小长度。 */
