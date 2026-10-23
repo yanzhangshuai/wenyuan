@@ -6,6 +6,8 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AnalysisProgressPanel } from "@/components/admin/analysis-progress";
+import { loadAnalysisStatus } from "@/server/modules/admin/analysis-status";
 import { loadBookDetail } from "@/server/modules/admin/books-query";
 
 /**
@@ -68,6 +70,7 @@ export default async function AdminBookDetailPage({
   const detail = await loadBookDetail(id);
   if (detail === null) notFound();
 
+  const analysisStatus = await loadAnalysisStatus(id);
   const { book, chapters, runs } = detail;
   const status = STATUS_META[book.status] ?? { label: book.status, variant: "secondary" as const };
   const totalChars = chapters.reduce((sum, chapter) => sum + chapter.charCount, 0);
@@ -129,6 +132,8 @@ export default async function AdminBookDetailPage({
         </Card>
       </div>
 
+      <AnalysisProgressPanel bookId={id} initial={analysisStatus} className="mb-6" />
+
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-lg">解析运行</CardTitle>
@@ -137,7 +142,7 @@ export default async function AdminBookDetailPage({
         <CardContent>
           {runs.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              还没有解析记录。在终端运行 <code>pnpm analyze {book.id}</code> 后再回来查看。
+              还没有解析记录。在书籍详情页点「重试解析」，或重新导入该书触发自动解析。
             </p>
           ) : (
             <div className="overflow-x-auto">

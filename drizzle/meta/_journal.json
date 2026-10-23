@@ -29,6 +29,13 @@
       "when": 1792640073366,
       "tag": "0003_married_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792722871784,
+      "tag": "0004_analysis_progress",
+      "breakpoints": true
     }
   ]
 }

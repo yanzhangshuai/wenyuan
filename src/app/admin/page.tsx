@@ -120,8 +120,8 @@ export default async function AdminDashboardPage() {
       </Card>
 
       <p className="text-muted-foreground mt-6 text-xs leading-relaxed">
-        提示：解析是付费长任务（一次约 $0.21–0.66），按项目纪律不在 Web 进程内触发。
-        导入完成后，请在终端运行 <code className="mx-1">pnpm analyze &lt;bookId&gt;</code> 再回本页查看结果。
+        提示：导入完成后会<strong>自动开始解析</strong>（一次约 $0.21–0.66，在独立子进程里执行，
+        Web 重启不会中断）。进度可在导入页或书籍详情页查看。
       </p>
     </div>
   );

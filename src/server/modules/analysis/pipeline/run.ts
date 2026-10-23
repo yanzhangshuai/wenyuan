@@ -23,6 +23,7 @@ import {
 import { FRONT_MATTER_ORDINAL } from "@/server/modules/importing/parse-text";
 
 import { DEFAULT_GENRE_PACK, resolveWorkPack, type WorkPack } from "../genre-pack";
+import type { AnalysisProgress } from "../progress";
 import {
   DictionaryResultSchema,
   SliceExtractionSchema,
@@ -412,11 +413,15 @@ async function runExtractionStage(
   context: RunContext,
   chapterSlices: readonly LocatedSlice[],
   candidates: readonly CandidateName[],
-  groundingIndex: GroundingIndex
+  groundingIndex: GroundingIndex,
+  /** 每完成一片回调一次（已完成数, 总数）。仅用于进度上报，不参与任何计算。 */
+  onSliceDone?: (completed: number, total: number) => void | Promise<void>
 ): Promise<SliceExtractionResult[]> {
   const snapshot = getModelSnapshot();
   const budget = getBudgetEnv();
   const results = new Array<SliceExtractionResult>(chapterSlices.length);
+  // 章与章并行，计数器必须在这里共享；JS 单线程，`+= 1` 不会丢更新。
+  let completed = 0;
 
   // 按章分组（保持全书顺序），章内分片保序。
   const slicesByChapter = new Map<number, number[]>();
@@ -451,6 +456,10 @@ async function runExtractionStage(
         results,
         groundingIndex
       );
+      completed += 1;
+      if (onSliceDone !== undefined) {
+        await onSliceDone(completed, chapterSlices.length);
+      }
     }
   };
 
@@ -637,8 +646,40 @@ async function extractOneSlice(
  */
 
 /** 管线输入。 */
+export { ANALYSIS_PROGRESS_STAGES } from "../progress";
+export type { AnalysisProgress, AnalysisProgressStage } from "../progress";
+
 export interface RunPipelineInput {
   bookId: string;
+  /**
+   * 可选进度回调。
+   *
+   * 契约：
+   * - 只在阶段切换与每片完成时调用，**不保证**每个分片都被上报（调用方自行节流）；
+   * - 回调抛错**不影响**解析：进度是观测手段，不能让观测把主流程弄死；
+   * - 不传时行为与加入该参数之前**逐字节一致**（既有测试与 $0 预演的前提）。
+   */
+  onProgress?: (progress: AnalysisProgress) => void | Promise<void>;
+}
+
+/**
+ * 安全地上报进度。
+ *
+ * 为什么吞掉异常：进度写库失败（连接抖动、行被删）不应该让一次已经花了钱的
+ * 解析作废。这里与 `recordIssue` 的区别是：`recordIssue` 属于审计，
+ * 失败要暴露；进度属于观测，失败可以降级。
+ */
+async function reportProgress(
+  input: RunPipelineInput,
+  runId: string,
+  progress: Omit<AnalysisProgress, "runId">
+): Promise<void> {
+  if (input.onProgress === undefined) return;
+  try {
+    await input.onProgress({ runId, ...progress });
+  } catch {
+    // 有意静默：见函数注释。
+  }
 }
 
 /**
@@ -894,6 +935,9 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   });
 
   try {
+    // 进度起点：run 已落库，但还不知道要切多少片。
+    await reportProgress(input, run.id, { stage: "dictionary", slicesDone: 0, slicesTotal: 0 });
+
     // 载入全文（用于 grounding 索引与分片）。
     const paragraphRows = await db
       .select({
@@ -931,12 +975,37 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     // （批次 25：闸门与 P2 共用同一索引 → 作用域不可能漂移）。纯函数、零 LLM 成本。
     const groundingIndex = buildGroundingIndex(fullTexts);
 
+    // 分片总数在这里才确定 —— 进度条从这一刻起才有真实分母。
+    await reportProgress(input, run.id, {
+      stage      : "dictionary",
+      slicesDone : 0,
+      slicesTotal: allSlices.length
+    });
+
     // P0：词典预扫描（叠加该作品自己的专名词典）。
     const dictionary = await runDictionaryStage(context, chapterTexts, workPack);
     const candidates = dictionary.candidates;
 
+    await reportProgress(input, run.id, {
+      stage      : "extract",
+      slicesDone : 0,
+      slicesTotal: allSlices.length
+    });
+
     // P1：逐片提取。
-    const sliceResults = await runExtractionStage(context, allSlices, candidates, groundingIndex);
+    const sliceResults = await runExtractionStage(
+      context,
+      allSlices,
+      candidates,
+      groundingIndex,
+      async (completed, total) => {
+        await reportProgress(input, run.id, {
+          stage      : "extract",
+          slicesDone : completed,
+          slicesTotal: total
+        });
+      }
+    );
 
     // P2：grounding（零 LLM）。
     // 关系上直接携带来源章节 —— P6 计算有效期必须看到「同一关系的多次观测」，
@@ -962,6 +1031,12 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
 
     const entityGrounding = groundEntities(rawEntities, groundingIndex);
     const relationGrounding = groundRelations(rawRelations, groundingIndex);
+
+    await reportProgress(input, run.id, {
+      stage      : "grounding",
+      slicesDone : allSlices.length,
+      slicesTotal: allSlices.length
+    });
 
     await recordIssue(context, "grounding_summary", {
       droppedEntities : entityGrounding.droppedEntities.length,
@@ -989,6 +1064,11 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       sliceResults.map((item) => item.sliceIndex)
     );
     const voted = voteRelations(votableSlices, SYMMETRIC_RELATION_CODES);
+    await reportProgress(input, run.id, {
+      stage      : "vote",
+      slicesDone : allSlices.length,
+      slicesTotal: allSlices.length
+    });
     if (voted.unknownCodes.length > 0) {
       await recordIssue(context, "unknown_relation_code", { codes: voted.unknownCodes });
     }
@@ -1028,6 +1108,12 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       // 批次 43：作品包声明的「同一人/别名组」。P1 逐片抽取是**局部视角**，
       // 同一人被抽成多个实体后会在冲突护栏处**永久碎片化** —— 声明组是这条缺口的解药。
       declaredAliasGroups: workPack.aliasGroups ?? []
+    });
+
+    await reportProgress(input, run.id, {
+      stage      : "merge",
+      slicesDone : allSlices.length,
+      slicesTotal: allSlices.length
     });
 
     await recordIssue(context, "merge_summary", {
@@ -1111,6 +1197,12 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       merged.keyToEntityIndex,
       SYMMETRIC_RELATION_CODES
     );
+
+    await reportProgress(input, run.id, {
+      stage      : "aggregate",
+      slicesDone : allSlices.length,
+      slicesTotal: allSlices.length
+    });
 
     // 把 P6 的生命周期字段与 P4 的证据引用合流，得到最终待落库的关系。
     // 两者用同一个 identity 对齐，因此这里是一次 O(n) 的哈希查找而非字符串匹配。
@@ -1200,6 +1292,12 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       },
       mentionIndex
     );
+
+    await reportProgress(input, run.id, {
+      stage      : "done",
+      slicesDone : allSlices.length,
+      slicesTotal: allSlices.length
+    });
 
     // 提及作用域留档（N1 的验收口径）。
     // 无条件记录 —— 与 `grounding_summary` / `vote_summary` 等同口径。

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { getDatabase } from "@/server/db/client";
 import { books } from "@/server/db/schema";
+import { createProgressReporter } from "@/server/modules/analysis/progress-reporter";
 import { runPipeline } from "@/server/modules/analysis/pipeline/run";
 import { runKnowledgeAgent } from "@/server/modules/knowledge/run-agent";
 import { formatKnowledgeSummary } from "@/server/modules/knowledge/summary";
@@ -68,13 +69,30 @@ async function main(): Promise<void> {
   //      脚本会把一次被质量闸门拦下的运行当成成功，继续往下跑。
   let result: Awaited<ReturnType<typeof runPipeline>>;
   try {
-    result = await runPipeline({ bookId });
+    // 进度上报：写 `analysis_runs` 的 stage/slices_*，供后台页面轮询。
+    // 同时把 `books.status` 置为 parsing —— 后台列表靠它显示「解析中」。
+    await getDatabase().update(books).set({ status: "parsing", updatedAt: new Date() }).where(eq(books.id, bookId));
+    result = await runPipeline({ bookId, onProgress: createProgressReporter() });
   } catch (error) {
     console.error("[analyze] 解析失败，本次未落库（该作品既有图谱保持不变）");
     console.error(`  ${error instanceof Error ? error.message : String(error)}`);
+    // 失败必须把 books.status 也标成 failed，否则后台会一直显示「解析中」。
+    try {
+      await getDatabase()
+        .update(books)
+        .set({ status: "failed", updatedAt: new Date() })
+        .where(eq(books.id, bookId));
+    } catch {
+      // 状态回写失败不应掩盖原始错误。
+    }
     process.exitCode = 1;
     return;
   }
+
+  await getDatabase()
+    .update(books)
+    .set({ status: "ready", updatedAt: new Date() })
+    .where(eq(books.id, bookId));
 
   console.log("[analyze] 解析完成");
   console.log(`  runId      : ${result.runId}`);

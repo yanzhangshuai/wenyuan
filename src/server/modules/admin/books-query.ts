@@ -4,6 +4,7 @@ import { desc, eq, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/server/db/client";
 import { analysisCalls, analysisRuns, books, chapters, entities, relationships } from "@/server/db/schema";
+import { computeAnalysisPercent, isProgressStage } from "@/server/modules/admin/analysis-status";
 
 /**
  * 后台书籍查询（只读）。
@@ -36,6 +37,8 @@ export interface AdminBookRow {
   lastRunStatus : string | null;
   /** 最近一次解析的成本（美元，字符串保留精度）。 */
   lastRunCostUsd: string | null;
+  /** 最近一次解析的进度（列表里显示「解析中 62%」）。 */
+  lastRunPercent: number;
 }
 
 /** 详情页：章节概要。 */
@@ -122,10 +125,13 @@ export async function listBooksForAdmin(): Promise<AdminBookRow[]> {
     countByBook(relationships),
     db
       .select({
-        bookId   : analysisRuns.bookId,
-        id       : analysisRuns.id,
-        status   : analysisRuns.status,
-        startedAt: analysisRuns.startedAt
+        bookId     : analysisRuns.bookId,
+        id         : analysisRuns.id,
+        status     : analysisRuns.status,
+        startedAt  : analysisRuns.startedAt,
+        stage      : analysisRuns.stage,
+        slicesDone : analysisRuns.slicesDone,
+        slicesTotal: analysisRuns.slicesTotal
       })
       .from(analysisRuns)
       .orderBy(desc(analysisRuns.startedAt)),
@@ -152,7 +158,17 @@ export async function listBooksForAdmin(): Promise<AdminBookRow[]> {
       lastRunId     : run?.id ?? null,
       lastRunAt     : run?.startedAt ?? null,
       lastRunStatus : run?.status ?? null,
-      lastRunCostUsd: cost?.usd ?? null
+      lastRunCostUsd: cost?.usd ?? null,
+      lastRunPercent:
+        run === undefined
+          ? 0
+          : run.status === "succeeded"
+            ? 100
+            : computeAnalysisPercent(
+                run.stage !== null && isProgressStage(run.stage) ? run.stage : null,
+                run.slicesDone,
+                run.slicesTotal
+              )
     };
   });
 }

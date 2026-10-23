@@ -4,6 +4,7 @@ import { AlertTriangle, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useState, type ChangeEvent, type SyntheticEvent } from "react";
 
+import { AnalysisProgressPanel } from "@/components/admin/analysis-progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import { Label } from "@/components/ui/label";
  *
  * 交互要点：
  * - 同名作品会被**整体替换**（段落坐标不可变，只能重建），因此必须勾选确认后才能提交；
- * - 导入**不触发解析**：成功后提示去终端跑 `pnpm analyze <bookId>`；
+ * - 导入成功后**自动开始解析**（服务端入队 → 独立子进程），面板原地显示进度；
  * - 失败时把服务端文案原样展示（如「未能从文本中解析出任何章节内容」）。
  */
 
@@ -38,6 +39,8 @@ export function ImportForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [result, setResult] = useState<ImportResult | null>(null);
+  /** 入队失败时的提示（导入本身已成功，只是解析没排上）。 */
+  const [queueNotice, setQueueNotice] = useState("");
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>): void {
     const picked = event.target.files?.[0] ?? null;
@@ -72,9 +75,10 @@ export function ImportForm() {
 
       const response = await fetch("/api/admin/import", { method: "POST", body: form });
       const payload = (await response.json()) as {
-        ok?     : boolean;
-        message?: string;
-        result? : ImportResult;
+        ok?      : boolean;
+        message? : string;
+        result?  : ImportResult;
+        analysis?: { queued: boolean; position: number; reason: string | null };
       };
 
       if (!response.ok || payload.ok !== true || payload.result === undefined) {
@@ -82,6 +86,16 @@ export function ImportForm() {
         return;
       }
       setResult(payload.result);
+      // 入队失败不影响导入结果，但必须说清楚「解析没开始」，否则用户会一直等进度。
+      if (payload.analysis !== undefined && !payload.analysis.queued) {
+        setQueueNotice(
+          payload.analysis.reason === "queue_full"
+            ? "导入成功，但解析队列已满，本次未启动解析。稍后可在书籍详情页点「重试解析」。"
+            : "导入成功，但该作品已有解析任务在跑，本次未重复启动。"
+        );
+      } else {
+        setQueueNotice("");
+      }
     } catch {
       setErrorMessage("网络异常，导入未完成");
     } finally {
@@ -94,7 +108,8 @@ export function ImportForm() {
       <CardHeader>
         <CardTitle className="text-lg">上传文本</CardTitle>
         <CardDescription>
-          支持 UTF-8 / GB18030 文本（自动归编码）；导入只建章节与段落，<strong>不触发解析</strong>。
+          支持 UTF-8 / GB18030 文本（自动归编码）；导入完成后<strong>立即开始解析</strong>，
+          下方会显示解析进度。
         </CardDescription>
       </CardHeader>
 
@@ -112,18 +127,23 @@ export function ImportForm() {
           ) : null}
 
           {result ? (
-            <Alert>
-              <AlertTitle>导入完成：《{result.title}》</AlertTitle>
-              <AlertDescription>
-                {result.chapterCount} 章 · {result.paragraphCount} 段 ·{" "}
-                {result.totalChars.toLocaleString("zh-CN")} 字
-                {result.deletedLines > 0 ? ` · 删除结构性噪声 ${result.deletedLines} 行` : ""}
-                <br />
-                下一步：在终端运行{" "}
-                <code className="mx-1">pnpm analyze {result.bookId}</code>
-                完成解析。
-              </AlertDescription>
-            </Alert>
+            <>
+              <Alert>
+                <AlertTitle>导入完成：《{result.title}》</AlertTitle>
+                <AlertDescription>
+                  {result.chapterCount} 章 · {result.paragraphCount} 段 ·{" "}
+                  {result.totalChars.toLocaleString("zh-CN")} 字
+                  {result.deletedLines > 0 ? ` · 删除结构性噪声 ${result.deletedLines} 行` : ""}
+                </AlertDescription>
+              </Alert>
+              {/* 导入即解析：进度面板自己轮询，导入表单不再关心后续。 */}
+              {queueNotice ? (
+                <Alert>
+                  <AlertDescription>{queueNotice}</AlertDescription>
+                </Alert>
+              ) : null}
+              <AnalysisProgressPanel bookId={result.bookId} />
+            </>
           ) : null}
 
           <div className="space-y-2">

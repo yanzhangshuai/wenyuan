@@ -1,6 +1,7 @@
 import { AUTH_ADMIN_ROLE } from "@/lib/auth";
 import { jsonFail, jsonOk } from "@/server/http/json";
 import { MAX_FILE_BYTES, importBookFromText } from "@/server/modules/admin/import-service";
+import { enqueueAnalysis } from "@/server/modules/analysis/runner";
 import { getAuthContext } from "@/server/modules/auth/session";
 
 /**
@@ -11,7 +12,8 @@ import { getAuthContext } from "@/server/modules/auth/session";
  * 安全与边界：
  * - **必须 ADMIN**：布局层的守卫挡不住直接打接口，这里必须独立校验；
  * - 只接受纯文本，且限制 20 MB；
- * - 不触发解析（解析是付费长任务，仍走终端）。
+ * - 导入成功后**自动入队解析**（独立子进程，不在本请求内执行），
+ *   进度通过 `GET /api/admin/books/[id]/status` 轮询。
  */
 export async function POST(request: Request): Promise<Response> {
   const auth = await getAuthContext();
@@ -54,7 +56,10 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const text = await file.text();
     const result = await importBookFromText(title, author, text);
-    return jsonOk({ result }, 201);
+    // 导入即解析：入队后立即返回，真正的执行在独立子进程里（见 runner.ts）。
+    // 入队失败（队列满 / 已在跑）不影响导入本身的结果 —— 导入已经成功落库。
+    const analysis = await enqueueAnalysis(result.bookId);
+    return jsonOk({ result, analysis }, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : "导入失败";
     return jsonFail("import_failed", message, 422);

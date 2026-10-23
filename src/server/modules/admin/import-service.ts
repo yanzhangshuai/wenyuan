@@ -6,7 +6,9 @@ import { importBook } from "@/server/modules/importing/persist";
  * 导入文本（解析前的「建作品」步骤）。
  *
  * 边界：
- * - **不触发解析**（付费动作仍由终端 `pnpm analyze` 执行）；
+ * - 本函数**只负责建作品**，不触发解析；「导入即解析」由调用方（`POST /api/admin/import`）
+ *   在导入成功后调用 `enqueueAnalysis()` 完成 —— 这样 CLI 导入（`pnpm import:book`）
+ *   仍然可以只入库、不花钱；
  * - 清洗顺序不可交换：先归编码（BOM/CRLF/零宽字符），再删整行噪声，最后切章；
  * - 同名作品会被**整体替换**（段落坐标不可变，只能重建），因此响应里回传被替换的标题，
  *   前端必须显式提示这一点。

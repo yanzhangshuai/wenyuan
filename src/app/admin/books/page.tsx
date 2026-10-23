@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AutoRefresh } from "@/components/admin/auto-refresh";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { listBooksForAdmin } from "@/server/modules/admin/books-query";
@@ -48,6 +49,8 @@ export default async function AdminBooksPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-6 py-8">
+      {/* 有作品在解析时每 5s 重渲染，状态列与百分比自动跟上。 */}
+      <AutoRefresh enabled={books.some((book) => book.status === "parsing")} />
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl font-semibold">书籍</h1>
@@ -93,7 +96,12 @@ export default async function AdminBooksPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={meta.variant}>{meta.label}</Badge>
+                      <Badge variant={meta.variant}>
+                        {meta.label}
+                        {book.status === "parsing" && book.lastRunPercent > 0
+                          ? ` ${String(book.lastRunPercent)}%`
+                          : ""}
+                      </Badge>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{book.chapterCount}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{book.entityCount}</td>

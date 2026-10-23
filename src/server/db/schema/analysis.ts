@@ -46,7 +46,28 @@ export const analysisRuns = pgTable("analysis_runs", {
   /** 冻结的领域知识 / skill 清单。 */
   skillSnapshot: jsonb("skill_snapshot").$type<SkillSnapshotEntry[]>(),
   startedAt    : timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
-  finishedAt   : timestamp("finished_at", { withTimezone: true })
+  finishedAt   : timestamp("finished_at", { withTimezone: true }),
+
+  /**
+   * ── 进度（迁移 0004）──
+   *
+   * 为什么进度落在 `analysis_runs` 而不是另建进度表：一次运行只有一条进度，
+   * 分表只会多一次 join 与一套生命周期；而 run 本身已经随管线创建，
+   * 进度字段与它天然同生共死。
+   *
+   * `stage` 用 `text` 而非枚举：`analysis_stage` 枚举缺 `queued` / `done`，
+   * 而 `ALTER TYPE ... ADD VALUE` 在事务内有使用限制；值域由
+   * `ANALYSIS_PROGRESS_STAGES` 常量约束，并由契约测试钉住。
+   */
+  stage        : text("stage"),
+  /** 已完成的 P1 分片数。 */
+  slicesDone   : integer("slices_done").notNull().default(0),
+  /** 本次运行的分片总数（P0 结束后才确定）。 */
+  slicesTotal  : integer("slices_total").notNull().default(0),
+  /** 失败原因（子进程非 0 退出 / 预算超限）。 */
+  errorMessage : text("error_message"),
+  /** 子进程日志的相对路径，便于失败后排查。 */
+  logPath      : text("log_path")
 });
 
 /** 单次模型调用审计（成本与错误归因的唯一来源）。 */

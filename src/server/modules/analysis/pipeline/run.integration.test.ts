@@ -981,3 +981,64 @@ describe("runPipeline 端到端（P0 → P6）", () => {
     }
   }, 120_000);
 });
+
+/**
+ * 进度回调的接线契约。
+ *
+ * 为什么必须在这一层测：`onProgress` 是**给后台页面看的唯一数据源**，
+ * 它一旦接错（阶段漏报、计数不增、runId 对不上），页面就会显示「卡住不动」，
+ * 而纯函数测试与管线产出断言**都不会变红** —— 这正是批 63「接线点无覆盖」的形态。
+ *
+ * 变异自测：
+ * - 把 `runExtractionStage` 里的 `completed += 1` 删掉 → 「分片计数必须递增」失败；
+ * - 把 `reportProgress(input, run.id, ...)` 的 `run.id` 换成 `input.bookId` →
+ *   「runId 必须与返回的 runId 一致」失败；
+ * - 删掉收尾的 `stage: "done"` 上报 → 「最后一个事件是 done」失败。
+ */
+describe("进度回调", () => {
+  it("阶段单调前进、分片计数到达总数、runId 与返回一致", async () => {
+    const { importBook } = await import("@/server/modules/importing/persist");
+    const { parseChapters } = await import("@/server/modules/importing/parse-text");
+    const { runPipeline } = await import("@/server/modules/analysis/pipeline/run");
+
+    const imported = await importBook("儒林外史进度", "吴敬梓", parseChapters(SAMPLE_NOVEL));
+
+    const events: { runId: string; stage: string; slicesDone: number; slicesTotal: number }[] = [];
+    const result = await runPipeline({
+      bookId: imported.bookId,
+      onProgress: (progress) => {
+        events.push({
+          runId      : progress.runId,
+          stage      : progress.stage,
+          slicesDone : progress.slicesDone,
+          slicesTotal: progress.slicesTotal
+        });
+      }
+    });
+
+    // 至少要有：起始 dictionary、extract 若干、收尾 done。
+    expect(events.length).toBeGreaterThan(2);
+
+    const first = events[0];
+    expect(first?.stage).toBe("dictionary");
+    // 所有事件必须指向同一个 run，且就是本次返回的那一条。
+    expect(new Set(events.map((event) => event.runId)).size).toBe(1);
+    expect(first?.runId).toBe(result.runId);
+
+    const extractEvents = events.filter((event) => event.stage === "extract");
+    expect(extractEvents.length).toBeGreaterThan(1);
+
+    // 分片计数必须递增且到达总数（漏掉 `completed += 1` 会在这里变红）。
+    for (let index = 1; index < extractEvents.length; index += 1) {
+      const previous = extractEvents[index - 1]?.slicesDone ?? 0;
+      const current = extractEvents[index]?.slicesDone ?? 0;
+      expect(current).toBeGreaterThanOrEqual(previous);
+    }
+    const lastExtract = extractEvents[extractEvents.length - 1];
+    expect(lastExtract?.slicesTotal).toBeGreaterThan(0);
+    expect(lastExtract?.slicesDone).toBe(lastExtract?.slicesTotal);
+
+    // 最后一个事件必须是 done（否则页面会永远停在 96%）。
+    expect(events[events.length - 1]?.stage).toBe("done");
+  }, 120_000);
+});
