@@ -84,6 +84,12 @@ export async function enqueueAnalysis(bookId: string): Promise<EnqueueResult> {
 
   queue.push(bookId);
   const position = queue.length;
+
+  // 入队即置 `parsing`：导入函数在结尾会把 `books.status` 写成 `ready`（表示文本已就绪），
+  // 而子进程要 1–2 秒才建出 run。若不在这里改状态，这段时间页面会显示
+  // 「这本书还没有解析记录」—— 明明刚导入并已排队。
+  await db.update(books).set({ status: "parsing", updatedAt: new Date() }).where(eq(books.id, bookId));
+
   void pump();
   return { queued: true, position, reason: null };
 }
