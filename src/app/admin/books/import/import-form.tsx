@@ -2,7 +2,9 @@
 
 import { AlertTriangle, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type SyntheticEvent } from "react";
+import { toast } from "sonner";
 
 import { AnalysisProgressPanel } from "@/components/admin/analysis-progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,7 +19,10 @@ import { Label } from "@/components/ui/label";
  *
  * 交互要点：
  * - 同名作品会被**整体替换**（段落坐标不可变，只能重建），因此必须勾选确认后才能提交；
- * - 导入成功后**自动开始解析**（服务端入队 → 独立子进程），面板原地显示进度；
+ * - 导入成功后**自动跳转到书籍详情页**并在那里看解析进度：
+ *   详情页有实体/关系/运行记录/章节清单，信息比导入页完整，也是「这本书的主页」；
+ * - 入队失败（队列满 / 已在跑）时**留在本页**显示原因 —— 跳过去只会看到一个
+ *   「还没有解析记录」的空面板，反而更容易误解。
  * - 失败时把服务端文案原样展示（如「未能从文本中解析出任何章节内容」）。
  */
 
@@ -32,6 +37,7 @@ interface ImportResult {
 }
 
 export function ImportForm() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
@@ -46,6 +52,7 @@ export function ImportForm() {
     const picked = event.target.files?.[0] ?? null;
     setFile(picked);
     setResult(null);
+    setQueueNotice("");
     setErrorMessage("");
     // 标题留空时用文件名（去扩展名）作为占位提示。
     if (picked !== null && title.length === 0) {
@@ -85,17 +92,25 @@ export function ImportForm() {
         setErrorMessage(payload.message ?? "导入失败，请稍后再试");
         return;
       }
-      setResult(payload.result);
-      // 入队失败不影响导入结果，但必须说清楚「解析没开始」，否则用户会一直等进度。
-      if (payload.analysis !== undefined && !payload.analysis.queued) {
-        setQueueNotice(
-          payload.analysis.reason === "queue_full"
-            ? "导入成功，但解析队列已满，本次未启动解析。稍后可在书籍详情页点「重试解析」。"
-            : "导入成功，但该作品已有解析任务在跑，本次未重复启动。"
-        );
-      } else {
-        setQueueNotice("");
+
+      const queued = payload.analysis !== undefined && payload.analysis.queued;
+      if (queued) {
+        // 解析已排上：直接去详情页看进度。导入页的摘要（章数/字数）详情页都有，
+        // 而详情页还有实体/关系/运行记录 —— 那才是用户下一步要看的东西。
+        toast.success(`《${payload.result.title}》导入完成，正在解析`, {
+          description: "进度与结果都在书籍详情页"
+        });
+        router.push(`/admin/books/${payload.result.bookId}`);
+        return;
       }
+
+      // 没排上解析：留在本页说清楚原因（跳过去只会看到一个「还没有解析记录」的空面板）。
+      setResult(payload.result);
+      setQueueNotice(
+        payload.analysis?.reason === "queue_full"
+          ? "导入成功，但解析队列已满，本次未启动解析。稍后可在书籍详情页点「重试解析」。"
+          : "导入成功，但该作品已有解析任务在跑，本次未重复启动。"
+      );
     } catch {
       setErrorMessage("网络异常，导入未完成");
     } finally {
@@ -134,14 +149,15 @@ export function ImportForm() {
                   {result.chapterCount} 章 · {result.paragraphCount} 段 ·{" "}
                   {result.totalChars.toLocaleString("zh-CN")} 字
                   {result.deletedLines > 0 ? ` · 删除结构性噪声 ${result.deletedLines} 行` : ""}
+                  {queueNotice.length > 0 ? (
+                    <>
+                      <br />
+                      {queueNotice}
+                    </>
+                  ) : null}
                 </AlertDescription>
               </Alert>
-              {/* 导入即解析：进度面板自己轮询，导入表单不再关心后续。 */}
-              {queueNotice ? (
-                <Alert>
-                  <AlertDescription>{queueNotice}</AlertDescription>
-                </Alert>
-              ) : null}
+              {/* 走到这里说明解析没排上（已排上的会被直接跳转到详情页）。 */}
               <AnalysisProgressPanel bookId={result.bookId} />
             </>
           ) : null}
