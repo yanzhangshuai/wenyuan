@@ -136,7 +136,11 @@ export function AnalysisProgressPanel({
       }
       // 重置成「等待子进程启动」态：bookStatus 必须是 pending，
       // 否则面板会因为「没有 run + 不是 pending」立刻退回「未解析」。
-      setSnapshot({ bookStatus: "pending", run: null });
+      setSnapshot({
+        bookStatus      : "pending",
+        knowledgeEnabled: snapshot?.knowledgeEnabled ?? false,
+        run             : null
+      });
     } catch {
       setRetryError("网络异常，重新解析未提交");
     } finally {
@@ -212,6 +216,9 @@ export function AnalysisProgressPanel({
         </div>
         <p className="text-muted-foreground mt-1 text-xs">
           共 {run.slicesTotal} 个分片。图谱已更新，可打开详情查看实体与关系。
+          {snapshot?.knowledgeEnabled === true
+            ? "已配置检索源，外部资料补全会在这之后继续跑（不影响图谱）。"
+            : null}
         </p>
         <Button asChild variant="outline" size="sm" className="mt-3">
           <Link href={`/admin/books/${bookId}`}>查看书籍详情 →</Link>

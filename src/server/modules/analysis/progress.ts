@@ -28,6 +28,14 @@ export const ANALYSIS_PROGRESS_STAGES = [
 
 export type AnalysisProgressStage = (typeof ANALYSIS_PROGRESS_STAGES)[number];
 
+/**
+ * 判定「卡死的 running」的阈值。
+ *
+ * 放在这个纯模块里而不是 `runner.ts`：读侧（`analysis-status.ts`）也要用它做惰性看门狗，
+ * 若从 runner 取，会把 `child_process` / `fs` 拉进一条只读查询的依赖图。
+ */
+export const STALE_RUN_MS = 30 * 60 * 1000;
+
 /** 一次进度快照。 */
 export interface AnalysisProgress {
   /** 本次运行的 id（`analysis_runs.id`）。回调方据此定位要更新哪一行。 */

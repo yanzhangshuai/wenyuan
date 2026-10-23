@@ -6,9 +6,10 @@ import { getDatabase } from "@/server/db/client";
 import { analysisRuns, books } from "@/server/db/schema";
 import {
   ANALYSIS_PROGRESS_STAGES,
+  STALE_RUN_MS,
   type AnalysisProgressStage
 } from "@/server/modules/analysis/progress";
-import { STALE_RUN_MS } from "@/server/modules/analysis/runner";
+import { resolveSearchProvider } from "@/server/modules/knowledge/search-provider";
 
 /**
  * 后台「解析进度」查询。
@@ -65,6 +66,13 @@ export function computeAnalysisPercent(
 /** 进度快照。 */
 export interface AnalysisStatusSnapshot {
   bookStatus: string;
+  /**
+   * 是否配置了检索源。
+   *
+   * 用途：解析完成后面板要告诉用户「外部资料可能还在补」，而不是让他以为
+   * 一个空的知识区就是最终结果。判定口径与执行器一致（同一个 `resolveSearchProvider`）。
+   */
+  knowledgeEnabled: boolean;
   run       : {
     id          : string;
     status      : string;
@@ -109,8 +117,10 @@ export async function loadAnalysisStatus(bookId: string): Promise<AnalysisStatus
     .orderBy(desc(analysisRuns.startedAt))
     .limit(1);
 
+  const knowledgeEnabled = resolveSearchProvider(process.env) !== null;
+
   if (run === undefined) {
-    return { bookStatus: bookRow.status, run: null };
+    return { bookStatus: bookRow.status, knowledgeEnabled, run: null };
   }
 
   let status = run.status;
@@ -132,6 +142,7 @@ export async function loadAnalysisStatus(bookId: string): Promise<AnalysisStatus
 
   return {
     bookStatus: bookRow.status,
+    knowledgeEnabled,
     run       : {
       id          : run.id,
       status,

@@ -8,6 +8,11 @@ import { desc, eq } from "drizzle-orm";
 
 import { getDatabase } from "@/server/db/client";
 import { analysisRuns, books } from "@/server/db/schema";
+import { resolveSearchProvider } from "@/server/modules/knowledge/search-provider";
+
+import { STALE_RUN_MS } from "./progress";
+
+export { STALE_RUN_MS };
 
 /**
  * 解析执行器：把「导入后自动解析」落成**独立子进程 + 进程内串行队列**。
@@ -32,9 +37,6 @@ import { analysisRuns, books } from "@/server/db/schema";
 
 /** 队列上限：超过就拒绝，避免一次拖入大量付费任务。 */
 const MAX_QUEUE_LENGTH = 10;
-
-/** 判定「卡死的 running」的阈值。 */
-export const STALE_RUN_MS = 30 * 60 * 1000;
 
 /** 入队结果。 */
 export interface EnqueueResult {
@@ -146,10 +148,24 @@ async function runChild(bookId: string): Promise<void> {
   };
 
   try {
+    /**
+     * 是否顺带跑三期判定层（外部资料补全）。
+     *
+     * 判定口径**直接复用** `resolveSearchProvider`，不另写一份「有没有配 key」的判断：
+     * 两处口径一旦分叉，就会出现「传了 flag 但 provider 为 null」的静默空转。
+     *
+     * 没配检索源时不传 flag —— 语义等价（脚本里也是 `requireProvider: false` 直接跳过），
+     * 但能少一行「已跳过」噪声，日志里「有没有真跑过检索」也更干净。
+     */
+    const withKnowledge = resolveSearchProvider(process.env) !== null;
+    const args = [tsxCli, "--conditions=react-server", "scripts/analyze.ts", bookId];
+    if (withKnowledge) args.push("--with-knowledge");
+    logStream.write(`[runner] withKnowledge=${String(withKnowledge)}\n`);
+
     const code = await new Promise<number>((resolve, reject) => {
       const child = spawn(
         process.execPath,
-        [tsxCli, "--conditions=react-server", "scripts/analyze.ts", bookId],
+        args,
         {
           cwd        : process.cwd(),
           stdio      : ["ignore", "pipe", "pipe"],
