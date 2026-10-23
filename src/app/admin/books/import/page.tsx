@@ -25,7 +25,7 @@ export default function AdminImportPage() {
 
       <div className="mb-6">
         <h1 className="font-serif text-2xl font-semibold">导入书籍</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
+        <p className="text-muted-foreground mt-1.5 text-sm">
           上传小说全文，系统会清洗编码、切分章节并写入段落坐标；解析随后在终端执行。
         </p>
       </div>

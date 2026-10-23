@@ -48,10 +48,10 @@ export default async function AdminBooksPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-6 py-8">
-      <div className="mb-6 flex items-end justify-between">
+      <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl font-semibold">书籍</h1>
-          <p className="text-muted-foreground mt-1 text-sm">共 {books.length} 部作品</p>
+          <p className="text-muted-foreground mt-1.5 text-sm">共 {books.length} 部作品</p>
         </div>
         <Button asChild className="gap-2">
           <Link href="/admin/books/import">

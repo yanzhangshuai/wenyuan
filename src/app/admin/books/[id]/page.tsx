@@ -81,13 +81,13 @@ export default async function AdminBookDetailPage({
         </Link>
       </Button>
 
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-serif text-2xl font-semibold">{book.title}</h1>
             <Badge variant={status.variant}>{status.label}</Badge>
           </div>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <p className="text-muted-foreground mt-1.5 text-sm">
             {book.author ?? "作者未填"} · {book.chapterCount} 章 ·{" "}
             {totalChars.toLocaleString("zh-CN")} 字
           </p>
@@ -101,28 +101,28 @@ export default async function AdminBookDetailPage({
       </div>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="gap-0 py-5">
+          <CardHeader className="pb-0">
             <CardDescription>实体</CardDescription>
-            <CardTitle className="text-2xl">{book.entityCount}</CardTitle>
+            <CardTitle className="text-2xl tabular-nums">{book.entityCount}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="gap-0 py-5">
+          <CardHeader className="pb-0">
             <CardDescription>关系</CardDescription>
-            <CardTitle className="text-2xl">{book.relationCount}</CardTitle>
+            <CardTitle className="text-2xl tabular-nums">{book.relationCount}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="gap-0 py-5">
+          <CardHeader className="pb-0">
             <CardDescription>解析次数</CardDescription>
-            <CardTitle className="text-2xl">{runs.length}</CardTitle>
+            <CardTitle className="text-2xl tabular-nums">{runs.length}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="gap-0 py-5">
+          <CardHeader className="pb-0">
             <CardDescription>最近成本</CardDescription>
-            <CardTitle className="text-2xl">
+            <CardTitle className="text-2xl tabular-nums">
               {formatCost(book.lastRunCostUsd)}
             </CardTitle>
           </CardHeader>

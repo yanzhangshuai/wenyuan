@@ -95,9 +95,13 @@ export function AdminHeader({ userName, role }: AdminHeaderProps) {
             </Link>
           </Button>
           <ThemeToggle />
-          <div className="ml-2 hidden flex-col items-end leading-tight sm:flex">
+          <div className="ml-1 hidden flex-col items-end leading-tight sm:flex">
             <span className="text-sm font-medium">{userName}</span>
-            <span className="text-muted-foreground text-[11px]">{AUTH_ROLE_LABELS[role]}</span>
+            {/* 名称与角色同名时（默认管理员名就叫「管理员」）不重复显示，
+                否则右上角会出现两行完全相同的「管理员」。与 viewer-header 同规则。 */}
+            {userName === AUTH_ROLE_LABELS[role] ? null : (
+              <span className="text-muted-foreground text-[11px]">{AUTH_ROLE_LABELS[role]}</span>
+            )}
           </div>
           <Button
             variant="ghost"

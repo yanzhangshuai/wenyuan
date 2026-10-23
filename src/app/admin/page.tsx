@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listBooksForAdmin } from "@/server/modules/admin/books-query";
 import { loadOverviewStats } from "@/server/modules/admin/overview";
 
@@ -40,53 +40,56 @@ export default async function AdminDashboardPage() {
     <div className="mx-auto w-full max-w-[1440px] px-6 py-8">
       <div className="mb-6">
         <h1 className="font-serif text-2xl font-semibold">仪表盘</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
+        <p className="text-muted-foreground mt-1.5 text-sm">
           当前共 {stats.books} 部作品 · {stats.entities} 个实体 · {stats.relationships} 条关系
         </p>
       </div>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="gap-0 py-5">
+          <CardHeader className="pb-0">
             <CardDescription className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               作品
             </CardDescription>
-            <CardTitle className="text-3xl">{stats.books}</CardTitle>
+            <CardTitle className="text-3xl tabular-nums">{stats.books}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="gap-0 py-5">
+          <CardHeader className="pb-0">
             <CardDescription className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               实体
             </CardDescription>
-            <CardTitle className="text-3xl">{stats.entities}</CardTitle>
+            <CardTitle className="text-3xl tabular-nums">{stats.entities}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="gap-0 py-5">
+          <CardHeader className="pb-0">
             <CardDescription className="flex items-center gap-2">
               <GitBranch className="h-4 w-4" />
               关系
             </CardDescription>
-            <CardTitle className="text-3xl">{stats.relationships}</CardTitle>
+            <CardTitle className="text-3xl tabular-nums">{stats.relationships}</CardTitle>
           </CardHeader>
         </Card>
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-lg">最近作品</CardTitle>
-            <CardDescription>解析状态与最近一次运行</CardDescription>
-          </div>
-          <Button asChild variant="ghost" size="sm" className="gap-1">
-            <Link href="/admin/books">
-              全部作品
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+        {/* 用 CardHeader 自带的 grid + CardAction，而不是把 CardHeader 改成 flex：
+            改成 flex 后 CardTitle/CardDescription 会落进同一个子节点，丢掉 header 的 gap，
+            表现为标题与说明紧贴。CardAction 由组件自带，右侧按钮仍是右对齐。 */}
+        <CardHeader>
+          <CardTitle className="text-lg">最近作品</CardTitle>
+          <CardDescription>解析状态与最近一次运行</CardDescription>
+          <CardAction className="self-center">
+            <Button asChild variant="ghost" size="sm" className="gap-1">
+              <Link href="/admin/books">
+                全部作品
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardAction>
         </CardHeader>
         <CardContent>
           {recent.length === 0 ? (
