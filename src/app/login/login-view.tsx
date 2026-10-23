@@ -226,6 +226,10 @@ function LoginForm({ stats }: { stats: LoginStats }) {
 
                     <form
                       className="space-y-4"
+                      // 兜底：若脚本尚未接管（hydration 未完成）用户就按了回车，
+                      // 浏览器会走原生提交。没有 method 时默认 GET，密码会被拼进 URL
+                      // （历史记录、日志、Referer 全部泄漏）。POST 至少把字段放进 body。
+                      method="post"
                       onSubmit={(event) => {
                         void handleSubmit(event);
                       }}
@@ -343,6 +347,8 @@ function LoginForm({ stats }: { stats: LoginStats }) {
 
                     <form
                       className="space-y-4"
+                      // 同登录表单：防止脚本未接管时的原生 GET 提交把密码写进 URL。
+                      method="post"
                       onSubmit={(event) => {
                         void handleRegister(event);
                       }}
