@@ -58,14 +58,9 @@ export function AdminHeader({ userName, role }: AdminHeaderProps) {
             <div className="border-primary/20 bg-primary/10 group-hover:bg-primary/20 flex h-9 w-9 items-center justify-center rounded-md border transition-colors">
               <span className="text-primary font-serif text-xl font-bold">淵</span>
             </div>
-            {/* 两行文字的**行盒高度之和必须等于方块高度（36px）**：
-                text-lg 默认行高 28 + text-[10px] 默认行高 15 = 43，比 36px 的方块高出 7px，
-                上下各溢出 3.5px —— 实测 rect 为 y10.5~53.5 vs 方块 y14~50，看起来就是「文字比 logo 大一圈」。
-                钉成 20 + gap4 + 12 = 36 后，两块上下边缘完全重合。 */}
-            <div className="flex flex-col gap-1">
-              <span className="text-lg leading-5 font-semibold tracking-wide">文淵管理</span>
-              <span className="text-muted-foreground text-[10px] leading-3 tracking-widest">ADMIN</span>
-            </div>
+            {/* 只留中文名。两行叠放时行盒合计 43px > 方块 36px，上下各溢出 3.5px，
+                看起来像「文字比 logo 大一圈」；去掉英文副标题后单行自然居中。 */}
+            <span className="text-lg font-semibold tracking-wide">文淵管理</span>
           </Link>
 
           <nav className="flex items-center gap-1">

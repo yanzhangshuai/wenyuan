@@ -59,11 +59,9 @@ export function ViewerHeader({ auth = null }: ViewerHeaderProps) {
           <div className="border-primary/20 bg-primary/10 group-hover:bg-primary/20 flex h-9 w-9 items-center justify-center rounded-md border transition-colors">
             <span className="text-primary font-serif text-xl font-bold">淵</span>
           </div>
-          {/* 行盒高度钉成 20 + 4 + 12 = 36，与 h-9 方块等高（与 admin-header 同规则）。 */}
-          <div className="flex flex-col gap-1">
-            <span className="text-lg leading-5 font-semibold tracking-wide">文淵</span>
-            <span className="text-muted-foreground text-[10px] leading-3 tracking-widest">WEN YUAN</span>
-          </div>
+          {/* 只留中文名。原先「文淵 / WEN YUAN」两行叠在 36px 方块旁，
+              行盒合计 43px 比方块还高，视觉上「文字比 logo 大一圈」，故去掉英文副标题。 */}
+          <span className="text-lg font-semibold tracking-wide">文淵</span>
         </Link>
 
         {/* Navigation Links */}
