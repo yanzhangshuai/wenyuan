@@ -22,7 +22,8 @@ import {
 } from "@/server/modules/ai/client";
 import { FRONT_MATTER_ORDINAL } from "@/server/modules/importing/parse-text";
 
-import { DEFAULT_GENRE_PACK, resolveWorkPack, type WorkPack } from "../genre-pack";
+import { DEFAULT_GENRE_PACK, type WorkPack } from "../genre-pack";
+import { loadWorkPack } from "../genre-pack/load";
 import type { AnalysisProgress } from "../progress";
 import {
   DictionaryResultSchema,
@@ -919,7 +920,9 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     .limit(1);
 
   context.bookTitle = bookRow?.title ?? "";
-  const workPackResolution = resolveWorkPack(context.bookTitle);
+  // 库 → 内置 → 空词典。库里有配置就用它（新书唯一可行的路径），
+  // 否则回落内置包（儒林/红楼，被金标验证过的基线）。
+  const workPackResolution = await loadWorkPack(input.bookId, context.bookTitle);
   const workPack = workPackResolution.pack;
 
   await recordIssue(context, "work_pack_resolved", {
@@ -931,7 +934,13 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     properNouns : workPack.properNouns.length,
     // 批次 43：声明的别名组数。与 `properNouns` 同理 —— 「这份图谱是哪版包产出的」
     // 必须可追溯，否则「同一 prompt_version、不同知识」无法区分。
-    aliasGroups : workPack.aliasGroups?.length ?? 0
+    aliasGroups : workPack.aliasGroups?.length ?? 0,
+    // 这份知识从哪来：db（库里的配置）/ builtin（内置包）/ unregistered（空词典）。
+    // 没有它就无法回答「这张图是用自动生成还是人工确认的配置跑出来的」——
+    // 而 `draft` 状态恰恰是「结果可能有错并」的第一嫌疑人。
+    origin      : workPackResolution.origin,
+    packSource  : workPackResolution.source,
+    packStatus  : workPackResolution.status
   });
 
   try {

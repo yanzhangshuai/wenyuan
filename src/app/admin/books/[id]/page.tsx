@@ -3,12 +3,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { eq } from "drizzle-orm";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnalysisProgressPanel } from "@/components/admin/analysis-progress";
+import { PackEditor } from "@/components/admin/pack-editor";
+import { getDatabase } from "@/server/db/client";
+import { bookPacks } from "@/server/db/schema";
 import { loadAnalysisStatus } from "@/server/modules/admin/analysis-status";
 import { loadBookDetail } from "@/server/modules/admin/books-query";
+import { loadWorkPack } from "@/server/modules/analysis/genre-pack/load";
 
 /**
  * 书籍详情（只读）。
@@ -72,6 +78,11 @@ export default async function AdminBookDetailPage({
 
   const analysisStatus = await loadAnalysisStatus(id);
   const { book, chapters, runs } = detail;
+
+  // 解析条件：库里存的（可编辑）与实际生效的（决定下次解析用哪份）。
+  const db = getDatabase();
+  const [packRow] = await db.select().from(bookPacks).where(eq(bookPacks.bookId, id)).limit(1);
+  const effectivePack = await loadWorkPack(id, book.title);
   const status = STATUS_META[book.status] ?? { label: book.status, variant: "secondary" as const };
   const totalChars = chapters.reduce((sum, chapter) => sum + chapter.charCount, 0);
 
@@ -131,6 +142,30 @@ export default async function AdminBookDetailPage({
           </CardHeader>
         </Card>
       </div>
+
+      <PackEditor
+        bookId={id}
+        className="mb-6"
+        initialStored={
+          packRow === undefined
+            ? null
+            : {
+                source        : packRow.source,
+                status        : packRow.status,
+                properNouns   : packRow.properNouns,
+                aliasGroups   : packRow.aliasGroups,
+                suggestionNote: packRow.suggestionNote,
+                updatedAt     : packRow.updatedAt.toISOString()
+              }
+        }
+        effective={{
+          origin          : effectivePack.origin,
+          packId          : effectivePack.pack.id,
+          packLabel       : effectivePack.pack.label,
+          properNounCount : effectivePack.properNounCount,
+          aliasGroupCount : effectivePack.aliasGroupCount
+        }}
+      />
 
       <AnalysisProgressPanel bookId={id} initial={analysisStatus} className="mb-6" />
 
