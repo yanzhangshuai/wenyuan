@@ -99,21 +99,71 @@ export function createHttpJsonProvider(config: HttpSearchProviderConfig): Search
     name,
     async search(query: string, options?: { limit?: number }): Promise<SearchResult> {
       const limit = options?.limit ?? 5;
+      const deepseek = isDeepSeekSearch(config.url);
+      // DeepSeek：字段叫 `count`，并可要求返回正文（按次计费，开不开一个价）。
+      // 通用契约：`{ query, limit }`。
+      const body = deepseek
+        ? { query, count: limit, need_content: true }
+        : { query, limit };
       const response = await fetch(config.url, {
         method : "POST",
         headers: {
           "content-type" : "application/json",
           "authorization": `Bearer ${config.apiKey}`
         },
-        body: JSON.stringify({ query, limit })
+        body: JSON.stringify(body)
       });
       if (!response.ok) {
         throw new Error(`检索服务返回 ${String(response.status)}（provider=${name}）`);
       }
       const payload: unknown = await response.json();
-      return { query, provider: name, hits: normalizeHits(payload).slice(0, limit) };
+      const hits = deepseek ? normalizeDeepSeekHits(payload) : normalizeHits(payload);
+      return { query, provider: name, hits: hits.slice(0, limit) };
     }
   };
+}
+
+/**
+ * 是否为 DeepSeek 官方 Search 接口。
+ *
+ * 为什么要单独认它：DeepSeek 的鉴权头与通用契约**完全一致**（`Authorization: Bearer`），
+ * 只有请求字段名（`count` 而非 `limit`）与响应形状（`{results:[{summary,content}]}`）不同。
+ * 按 host 判断比让用户多配一个 `SEARCH_PROVIDER_KIND` 更省事，也不会配错。
+ */
+function isDeepSeekSearch(url: string): boolean {
+  try {
+    return new URL(url).hostname.endsWith("deepseek.com");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * DeepSeek Search 的响应归一化。
+ *
+ * 关键差异：它同时给 `snippet`（100–200 字）与 `summary`（600–800 字）。
+ * 判定层需要足够上下文才能判断「这个人是不是同一个人」，因此**优先用 `summary`**
+ * 当 `snippet`，`content` 留给 `need_content=true` 的正文。
+ */
+export function normalizeDeepSeekHits(payload: unknown): SearchHit[] {
+  if (payload === null || typeof payload !== "object") return [];
+  const container = payload as Record<string, unknown>;
+  if (!Array.isArray(container.results)) return [];
+
+  const hits: SearchHit[] = [];
+  for (const item of container.results) {
+    if (item === null || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const url = typeof record.url === "string" ? record.url : null;
+    if (url === null) continue;
+
+    const title = typeof record.title === "string" ? record.title : "";
+    const summary = typeof record.summary === "string" ? record.summary : "";
+    const snippet = summary.length > 0 ? summary : typeof record.snippet === "string" ? record.snippet : "";
+    const content = typeof record.content === "string" && record.content.length > 0 ? record.content : undefined;
+    hits.push(content === undefined ? { title, url, snippet } : { title, url, snippet, content });
+  }
+  return hits;
 }
 
 /** 从任意检索响应里抽取命中（认不出就返回空数组，不猜）。 */
@@ -162,9 +212,25 @@ function safeHost(url: string): string {
  */
 export function resolveSearchProvider(env: Record<string, string | undefined>): SearchProvider | null {
   const url = env.SEARCH_API_URL;
-  const key = env.SEARCH_API_KEY;
-  if (typeof url === "string" && url.length > 0 && typeof key === "string" && key.length > 0) {
-    return createHttpJsonProvider({ url, apiKey: key, name: env.SEARCH_PROVIDER_NAME });
+  if (typeof url === "string" && url.length > 0) {
+    const explicitKey = env.SEARCH_API_KEY;
+    /**
+     * DeepSeek Search 与模型接口**共用同一个 key**，因此允许省略 `SEARCH_API_KEY`：
+     * 同一串密钥在 `.env` 里写两遍，迟早会出现「改了一处、忘了另一处」，
+     * 而且多一处存放就多一处泄漏面。
+     *
+     * 只对 deepseek.com 生效 —— 别的服务商复用一个不相干的 key 只会得到 401，
+     * 那种「静默配错」比「没配」更难查。
+     */
+    const key =
+      typeof explicitKey === "string" && explicitKey.length > 0
+        ? explicitKey
+        : isDeepSeekSearch(url)
+          ? env.AI_API_KEY
+          : undefined;
+    if (typeof key === "string" && key.length > 0) {
+      return createHttpJsonProvider({ url, apiKey: key, name: env.SEARCH_PROVIDER_NAME });
+    }
   }
   const fixtureDir = env.SEARCH_FIXTURE_DIR;
   if (typeof fixtureDir === "string" && fixtureDir.length > 0) {

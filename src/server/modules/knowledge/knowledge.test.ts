@@ -6,8 +6,11 @@ import { describe, expect, it } from "vitest";
 import {
   SearchUnavailableError,
   createFixtureProvider,
+  createHttpJsonProvider,
   fixtureFileName,
-  normalizeHits
+  normalizeDeepSeekHits,
+  normalizeHits,
+  resolveSearchProvider
 } from "./search-provider";
 import { hashSnapshot } from "./snapshot";
 import { formatKnowledgeSummary } from "./summary";
@@ -227,5 +230,98 @@ describe("run-agent 的环境加载顺序（批 92 实测缺陷的护栏）", ()
     expect(loadIndex).toBeGreaterThan(-1);
     expect(resolveIndex).toBeGreaterThan(-1);
     expect(loadIndex).toBeLessThan(resolveIndex);
+  });
+});
+
+/**
+ * DeepSeek Search 的适配契约。
+ *
+ * 为什么单独测它：DeepSeek 与通用契约**只差两个字段**（`count` 而非 `limit`、
+ * `summary` 而非 `snippet`），这种「看起来一样、其实不一样」最容易在换源时静默失败 ——
+ * 请求成功但 `results` 解析出 0 条，判定层会把全部实体记成 `unresolvable`。
+ */
+describe("DeepSeek Search 适配", () => {
+  const payload = {
+    results: [
+      {
+        title   : "虞育德",
+        url     : "https://baike.baidu.com/item/虞育德",
+        snippet : "短摘要（100–200 字）",
+        summary : "长摘要（600–800 字，判定层真正需要的上下文）",
+        content : ""
+      },
+      { title: "缺 url 的条目", snippet: "应被丢弃" }
+    ]
+  };
+
+  it("summary 优先当 snippet：短摘要不足以判断「是不是同一个人」", () => {
+    const hits = normalizeDeepSeekHits(payload);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.snippet).toContain("长摘要");
+    // `content` 为空字符串时视为「没有正文」，不能塞个空串进去冒充证据。
+    expect(hits[0]?.content).toBeUndefined();
+  });
+
+  it("认不出形状时返回空数组，不猜", () => {
+    expect(normalizeDeepSeekHits(null)).toEqual([]);
+    expect(normalizeDeepSeekHits({ foo: 1 })).toEqual([]);
+  });
+
+  it("DeepSeek 的 URL 可以省略 SEARCH_API_KEY（与模型共用一把密钥）", () => {
+    const provider = resolveSearchProvider({
+      SEARCH_API_URL: "https://api.deepseek.com/v1/tools/search",
+      AI_API_KEY    : "sk-model-key"
+    });
+    expect(provider).not.toBeNull();
+  });
+
+  it("非 DeepSeek 的 URL 不会复用 AI_API_KEY（复用不相干的 key 只会得到 401，比没配更难查）", () => {
+    const provider = resolveSearchProvider({
+      SEARCH_API_URL: "https://api.example.com/search",
+      AI_API_KEY    : "sk-model-key"
+    });
+    expect(provider).toBeNull();
+  });
+
+  it("显式 SEARCH_API_KEY 仍然优先（换源时不被迫改 AI_API_KEY）", () => {
+    const provider = resolveSearchProvider({
+      SEARCH_API_URL : "https://api.deepseek.com/v1/tools/search",
+      SEARCH_API_KEY : "sk-explicit",
+      AI_API_KEY     : "sk-model-key"
+    });
+    expect(provider).not.toBeNull();
+  });
+
+  it("请求体用 count 而不是 limit，并显式要求返回正文", async () => {
+    // 缺陷形态：沿用通用契约的 `{query, limit}` → DeepSeek 忽略未知字段、
+    // 按默认 count=10 返回，虽然不会报错，但 `limit` 的意图静默失效。
+    const captured: string[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      captured.push(typeof init?.body === "string" ? init.body : "");
+      return Promise.resolve(
+        new Response(JSON.stringify({ results: [] }), {
+          status : 200,
+          headers: { "content-type": "application/json" }
+        })
+      );
+    }) as typeof fetch;
+
+    try {
+      const provider = createHttpJsonProvider({
+        url   : "https://api.deepseek.com/v1/tools/search",
+        apiKey: "sk-test"
+      });
+      await provider.search("儒林外史 虞育德", { limit: 3 });
+    } finally {
+      globalThis.fetch = original;
+    }
+
+    expect(captured).toHaveLength(1);
+    expect(JSON.parse(captured[0] ?? "{}")).toEqual({
+      query       : "儒林外史 虞育德",
+      count       : 3,
+      need_content: true
+    });
   });
 });
