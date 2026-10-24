@@ -57,6 +57,13 @@ export interface EffectivePack {
 export interface PackEditorProps {
   bookId       : string;
   initialStored: StoredPack | null;
+  /**
+   * 内置包内容（库里没有配置时用于**预填**）。
+   *
+   * 不预填的后果（实测踩到）：页面显示「135 个专名」而文本框是空的，
+   * 用户此时点保存 → 空配置写进库 → 内置包被静默覆盖成零词典。
+   */
+  builtinPack? : { properNouns: { name: string; postag: number }[]; aliasGroups: string[][] } | null;
   effective    : EffectivePack;
   className?   : string;
 }
@@ -71,10 +78,15 @@ const ORIGIN_LABELS: Record<string, string> = {
 // 纯函数定义在 `@/lib/pack-text`（无依赖，可单测）；这里 re-export 保持组件对外 API 不变。
 export { formatGroupsText, formatNounsText, parseGroupsText, parseNounsText };
 
-export function PackEditor({ bookId, initialStored, effective, className }: PackEditorProps) {
+export function PackEditor({ bookId, initialStored, builtinPack = null, effective, className }: PackEditorProps) {
   const [stored, setStored] = useState<StoredPack | null>(initialStored);
-  const [nounsText, setNounsText] = useState(formatNounsText(initialStored?.properNouns ?? []));
-  const [groupsText, setGroupsText] = useState(formatGroupsText(initialStored?.aliasGroups ?? []));
+  // 初始内容：库里的配置优先；没有则预填内置包（避免「显示 135 个专名但框是空的」）。
+  const [nounsText, setNounsText] = useState(
+    formatNounsText(initialStored?.properNouns ?? builtinPack?.properNouns ?? [])
+  );
+  const [groupsText, setGroupsText] = useState(
+    formatGroupsText(initialStored?.aliasGroups ?? builtinPack?.aliasGroups ?? [])
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -84,8 +96,9 @@ export function PackEditor({ bookId, initialStored, effective, className }: Pack
     const payload = (await response.json()) as { stored?: StoredPack | null };
     const next = payload.stored ?? null;
     setStored(next);
-    setNounsText(formatNounsText(next?.properNouns ?? []));
-    setGroupsText(formatGroupsText(next?.aliasGroups ?? []));
+    // 保存失败或还没保存时，回落到内置包内容 —— 不能把用户看到的 135 个专名清空。
+    setNounsText(formatNounsText(next?.properNouns ?? builtinPack?.properNouns ?? []));
+    setGroupsText(formatGroupsText(next?.aliasGroups ?? builtinPack?.aliasGroups ?? []));
     return next;
   }
 
@@ -129,14 +142,25 @@ export function PackEditor({ bookId, initialStored, effective, className }: Pack
   }
 
   async function handleSave(): Promise<void> {
+    const nouns = parseNounsText(nounsText);
+    const groups = parseGroupsText(groupsText);
+    if (nouns.length === 0 && groups.length === 0) {
+      // 空配置是合法的，但它会让解析退化成零词典（人名被切碎、候选名单缺人），
+      // 而且不会报错。这种「看起来保存成功、其实把书弄坏了」的操作必须拦一次。
+      const confirmed = window.confirm(
+        "保存后配置为空：解析会退化为零词典，人名会被切碎、候选名单缺人。确定要清空吗？"
+      );
+      if (!confirmed) return;
+    }
+
     setIsSaving(true);
     try {
       const response = await fetch(`/api/admin/books/${bookId}/pack`, {
         method : "PUT",
         headers: { "content-type": "application/json" },
         body   : JSON.stringify({
-          properNouns: parseNounsText(nounsText),
-          aliasGroups: parseGroupsText(groupsText),
+          properNouns: nouns,
+          aliasGroups: groups,
           status     : "confirmed"
         })
       });
@@ -189,6 +213,19 @@ export function PackEditor({ bookId, initialStored, effective, className }: Pack
           </Alert>
         ) : null}
 
+        {stored === null && builtinPack !== null ? (
+          <Alert>
+            <AlertTitle>
+              当前使用内置包（{builtinPack.properNouns.length} 个专名 ·{" "}
+              {builtinPack.aliasGroups.length} 个别名组）
+            </AlertTitle>
+            <AlertDescription>
+              下方已填入它的内容。不改就不用动，解析会继续用内置包；
+              改了再点保存，会生成一份自定义配置（从这一刻起这本书不再跟随内置包）。
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="pack-nouns">
@@ -230,7 +267,14 @@ export function PackEditor({ bookId, initialStored, effective, className }: Pack
             onClick={() => {
               void handleGenerate();
             }}
-            disabled={isGenerating || isSaving}
+            // 内置包的书不提供自动生成：实测红楼生成出 145 专名 / 3 组，
+            // 远低于内置的 163 / 32 —— 覆盖等于用未验证配置换掉金标基线。
+            disabled={isGenerating || isSaving || (stored === null && builtinPack !== null)}
+            title={
+              stored === null && builtinPack !== null
+                ? "已有人工验证过的内置包，不需要自动生成"
+                : undefined
+            }
           >
             {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {isGenerating ? "正在扫描全书…" : "自动生成建议"}

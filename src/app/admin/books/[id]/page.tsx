@@ -83,6 +83,21 @@ export default async function AdminBookDetailPage({
   const db = getDatabase();
   const [packRow] = await db.select().from(bookPacks).where(eq(bookPacks.bookId, id)).limit(1);
   const effectivePack = await loadWorkPack(id, book.title);
+
+  /**
+   * 库里没有配置、但命中内置包时，把内置包的内容**预填**到编辑器。
+   *
+   * 不预填的后果（实测踩到）：页面显示「135 个专名」，而两个文本框是空的；
+   * 用户此时点「保存」会把**空配置**写进库 —— 内置包被一份空配置覆盖，
+   * 下次解析直接退化成零词典，而且没有任何报错。
+   */
+  const builtinPack =
+    packRow === undefined && effectivePack.origin === "builtin"
+      ? {
+          properNouns: effectivePack.pack.properNouns.map(([name, postag]) => ({ name, postag })),
+          aliasGroups: (effectivePack.pack.aliasGroups ?? []).map((group) => [...group])
+        }
+      : null;
   const status = STATUS_META[book.status] ?? { label: book.status, variant: "secondary" as const };
   const totalChars = chapters.reduce((sum, chapter) => sum + chapter.charCount, 0);
 
@@ -146,6 +161,7 @@ export default async function AdminBookDetailPage({
       <PackEditor
         bookId={id}
         className="mb-6"
+        builtinPack={builtinPack}
         initialStored={
           packRow === undefined
             ? null
@@ -177,7 +193,7 @@ export default async function AdminBookDetailPage({
         <CardContent>
           {runs.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              还没有解析记录。在书籍详情页点「重试解析」，或重新导入该书触发自动解析。
+              还没有解析记录。确认上方的解析条件后，点「开始解析」。
             </p>
           ) : (
             <div className="overflow-x-auto">
