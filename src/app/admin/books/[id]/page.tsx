@@ -162,6 +162,7 @@ export default async function AdminBookDetailPage({
         bookId={id}
         className="mb-6"
         builtinPack={builtinPack}
+        canStart={analysisStatus !== null && analysisStatus.run === null && analysisStatus.bookStatus !== "parsing"}
         initialStored={
           packRow === undefined
             ? null

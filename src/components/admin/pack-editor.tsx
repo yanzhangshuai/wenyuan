@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, Sparkles, Save } from "lucide-react";
+import { Loader2, Play, Save, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -65,6 +66,14 @@ export interface PackEditorProps {
    */
   builtinPack? : { properNouns: { name: string; postag: number }[]; aliasGroups: string[][] } | null;
   effective    : EffectivePack;
+  /**
+   * 是否显示「开始解析」。
+   *
+   * 为什么放在这里而不是只靠下方的进度面板：配置卡片占满一屏（两个 256px 的文本框），
+   * 窗口矮的时候「开始解析」会被推到屏幕外 —— 实测用户找不到按钮。
+   * 卡片内再放一个入口，滚到哪都能点。
+   */
+  canStart?    : boolean;
   className?   : string;
 }
 
@@ -78,7 +87,15 @@ const ORIGIN_LABELS: Record<string, string> = {
 // 纯函数定义在 `@/lib/pack-text`（无依赖，可单测）；这里 re-export 保持组件对外 API 不变。
 export { formatGroupsText, formatNounsText, parseGroupsText, parseNounsText };
 
-export function PackEditor({ bookId, initialStored, builtinPack = null, effective, className }: PackEditorProps) {
+export function PackEditor({
+  bookId,
+  initialStored,
+  builtinPack = null,
+  effective,
+  canStart = false,
+  className
+}: PackEditorProps) {
+  const router = useRouter();
   const [stored, setStored] = useState<StoredPack | null>(initialStored);
   // 初始内容：库里的配置优先；没有则预填内置包（避免「显示 135 个专名但框是空的」）。
   const [nounsText, setNounsText] = useState(
@@ -89,6 +106,7 @@ export function PackEditor({ bookId, initialStored, builtinPack = null, effectiv
   );
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
   async function reload(): Promise<StoredPack | null> {
     const response = await fetch(`/api/admin/books/${bookId}/pack`, { cache: "no-store" });
@@ -178,6 +196,30 @@ export function PackEditor({ bookId, initialStored, builtinPack = null, effectiv
     }
   }
 
+  /**
+   * 开始解析（不隐含保存）。
+   *
+   * 刻意与「保存」分开：用户可能就是想用内置包直接跑（不改），
+   * 若点开始解析顺带保存，会把「内置包」变成「自定义」—— 之后内置包更新就跟他无关了。
+   */
+  async function handleStart(): Promise<void> {
+    setIsStarting(true);
+    try {
+      const response = await fetch(`/api/admin/books/${bookId}/analyze`, { method: "POST" });
+      const payload = (await response.json()) as { ok?: boolean; message?: string };
+      if (!response.ok || payload.ok !== true) {
+        toast.error(payload.message ?? "无法开始解析");
+        return;
+      }
+      toast.success("已开始解析", { description: "进度显示在下方，可以稍后回来看结果" });
+      router.refresh();
+    } catch {
+      toast.error("开始解析失败：网络异常");
+    } finally {
+      setIsStarting(false);
+    }
+  }
+
   const isDraft = stored?.status === "draft";
 
   return (
@@ -222,6 +264,17 @@ export function PackEditor({ bookId, initialStored, builtinPack = null, effectiv
             <AlertDescription>
               下方已填入它的内容。不改就不用动，解析会继续用内置包；
               改了再点保存，会生成一份自定义配置（从这一刻起这本书不再跟随内置包）。
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {stored === null && builtinPack === null ? (
+          <Alert>
+            <AlertTitle>这本书还没有人名/地名词典</AlertTitle>
+            <AlertDescription>
+              直接解析会用通用分词器，人名可能被切碎（「夏侯惇」→「夏侯」+「惇」），
+              候选名单缺人，抽出来的关系也少。建议先点「自动生成建议」扫一遍全书，
+              审核后再开始解析；也可以直接在下方手工填写。
             </AlertDescription>
           </Alert>
         ) : null}
@@ -280,17 +333,34 @@ export function PackEditor({ bookId, initialStored, builtinPack = null, effectiv
             {isGenerating ? "正在扫描全书…" : "自动生成建议"}
           </Button>
           <Button
+            variant={canStart ? "outline" : "default"}
             className="gap-2"
             onClick={() => {
               void handleSave();
             }}
-            disabled={isGenerating || isSaving}
+            disabled={isGenerating || isSaving || isStarting}
           >
             {isSaving ? <Loader2 className={cn("h-4 w-4 animate-spin")} /> : <Save className="h-4 w-4" />}
             保存
           </Button>
+          {canStart ? (
+            <Button
+              className="gap-2"
+              onClick={() => {
+                void handleStart();
+              }}
+              disabled={isGenerating || isSaving || isStarting}
+            >
+              {isStarting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+              开始解析
+            </Button>
+          ) : null}
           <span className="text-muted-foreground text-xs">
-            {isGenerating ? "首次扫描全书约需 10–60 秒，请不要关闭页面" : "保存后下次解析生效"}
+            {isGenerating
+              ? "首次扫描全书约需 10–60 秒，请不要关闭页面"
+              : canStart
+                ? "开始解析会调用模型，一次约 $0.21–0.66"
+                : "保存后下次解析生效"}
           </span>
         </div>
 
