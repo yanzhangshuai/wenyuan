@@ -154,8 +154,9 @@ export function AnalysisProgressPanel({
     if (!waitingForRun) {
       return (
         <div className={cn("rounded-lg border border-dashed p-4", className)}>
-          <p className="text-sm font-medium">这本书还没有解析记录</p>
+          <p className="text-sm font-medium">尚未解析</p>
           <p className="text-muted-foreground mt-1 text-xs">
+            开始前确认两件事：上方「解析条件」里的人名/别名词典是否够用、页面下方章节清单的切分是否正确。
             解析会调用模型抽取人物与关系，一次约 $0.21–0.66。
           </p>
           <Button

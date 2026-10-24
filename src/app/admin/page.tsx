@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, GitBranch, Users } from "lucide-react";
+import { ArrowRight, BookOpen, GitBranch, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -41,11 +41,12 @@ export default async function AdminDashboardPage() {
       <div className="mb-6">
         <h1 className="font-serif text-2xl font-semibold">仪表盘</h1>
         <p className="text-muted-foreground mt-1.5 text-sm">
-          当前共 {stats.books} 部作品 · {stats.entities} 个实体 · {stats.relationships} 条关系
+          当前共 {stats.books} 部作品 · {stats.entities} 个实体 · {stats.relationships} 条关系 ·
+          累计花费 ${stats.costUsd}
         </p>
       </div>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="gap-0 py-5">
           <CardHeader className="pb-0">
             <CardDescription className="flex items-center gap-2">
@@ -71,6 +72,15 @@ export default async function AdminDashboardPage() {
               关系
             </CardDescription>
             <CardTitle className="text-3xl tabular-nums">{stats.relationships}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="gap-0 py-5">
+          <CardHeader className="pb-0">
+            <CardDescription className="flex items-center gap-2">
+              <Wallet className="h-4 w-4" />
+              累计花费
+            </CardDescription>
+            <CardTitle className="text-3xl tabular-nums">${stats.costUsd}</CardTitle>
           </CardHeader>
         </Card>
       </div>

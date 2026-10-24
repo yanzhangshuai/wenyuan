@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 
 import { getDatabase } from "@/server/db/client";
-import { books, entities, relationships } from "@/server/db/schema";
+import { analysisCalls, books, entities, relationships } from "@/server/db/schema";
 
 /**
  * 后台概览统计。
@@ -19,6 +19,13 @@ export interface OverviewStats {
   entities     : number;
   /** 关系数（全部作品，含已结束）。 */
   relationships: number;
+  /**
+   * 累计模型花费（美元，字符串保留精度）。
+   *
+   * 口径是 `analysis_calls` 的逐次调用累加 —— 与作品详情页「最近成本」同源，
+   * 因此「所有作品成本之和」必然等于这个数（不会出现两套账）。
+   */
+  costUsd      : string;
 }
 
 /** 计数查询（用 `count(*)::int` 拿数字而非 bigint 字符串）。 */
@@ -31,13 +38,23 @@ async function countOf(table: PgTable): Promise<number> {
 /**
  * 读取概览统计。
  *
- * @returns 作品 / 实体 / 关系三项计数
+ * @returns 作品 / 实体 / 关系 / 累计花费
  */
 export async function loadOverviewStats(): Promise<OverviewStats> {
-  const [bookCount, entityCount, relationCount] = await Promise.all([
+  const db = getDatabase();
+  const [bookCount, entityCount, relationCount, costRows] = await Promise.all([
     countOf(books),
     countOf(entities),
-    countOf(relationships)
+    countOf(relationships),
+    // 单表聚合，无 join，因此 `sql` 模板里插列引用不会踩「丢表限定」那个坑。
+    db
+      .select({ usd: sql<string | null>`round(sum(${analysisCalls.costUsd}), 4)::text` })
+      .from(analysisCalls)
   ]);
-  return { books: bookCount, entities: entityCount, relationships: relationCount };
+  return {
+    books        : bookCount,
+    entities     : entityCount,
+    relationships: relationCount,
+    costUsd      : costRows[0]?.usd ?? "0"
+  };
 }

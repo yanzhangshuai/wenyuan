@@ -7,13 +7,18 @@ import { getAuthContext } from "@/server/modules/auth/session";
 /**
  * POST /api/admin/import
  *
- * 表单字段：`file`（必填，txt）、`title`（可空，默认取文件名）、`author`（可空）。
+ * 表单字段：
+ * - `file`（必填，txt）
+ * - `title`（可空，默认取文件名）
+ * - `author`（可空）
+ * - `autoAnalyze`（可空）：`"1"` 表示导入后**立即开始解析**；缺省/`"0"` 则只入库。
  *
  * 安全与边界：
  * - **必须 ADMIN**：布局层的守卫挡不住直接打接口，这里必须独立校验；
  * - 只接受纯文本，且限制 20 MB；
- * - 导入成功后**自动入队解析**（独立子进程，不在本请求内执行），
- *   进度通过 `GET /api/admin/books/[id]/status` 轮询。
+ * - 默认**不解析**：新书的专名词典还没配，直接解析会用空词典跑一遍（实测红楼一次 $0.66），
+ *   而配置往往要改几轮。所以默认停在详情页等用户确认章节与解析条件，
+ *   只有显式传 `autoAnalyze=1` 才入队。
  */
 export async function POST(request: Request): Promise<Response> {
   const auth = await getAuthContext();
@@ -56,9 +61,10 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const text = await file.text();
     const result = await importBookFromText(title, author, text);
-    // 导入即解析：入队后立即返回，真正的执行在独立子进程里（见 runner.ts）。
-    // 入队失败（队列满 / 已在跑）不影响导入本身的结果 —— 导入已经成功落库。
-    const analysis = await enqueueAnalysis(result.bookId);
+    // 默认不解析：新书还没有专名配置，直接跑等于用空词典烧钱。
+    // 只有导入页显式勾了「立即解析」才入队。
+    const autoAnalyze = form.get("autoAnalyze") === "1";
+    const analysis = autoAnalyze ? await enqueueAnalysis(result.bookId) : null;
     return jsonOk({ result, analysis }, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : "导入失败";
