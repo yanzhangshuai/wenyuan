@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -121,12 +121,37 @@ export default async function AdminBookDetailPage({
             {totalChars.toLocaleString("zh-CN")} 字
           </p>
         </div>
-        <Button asChild variant="outline" className="gap-2">
-          <Link href={`/book/${book.id}`}>
-            打开图谱
-            <ExternalLink className="h-4 w-4" />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 导出：图谱已就绪才给入口（未解析时导出的是空表，容易让人以为坏了）。 */}
+          {book.entityCount > 0 ? (
+            <>
+              <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs">
+                <a href={`/api/books/${book.id}/export?type=entities`} download>
+                  <Download className="h-3.5 w-3.5" />
+                  实体 CSV
+                </a>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs">
+                <a href={`/api/books/${book.id}/export?type=relationships`} download>
+                  <Download className="h-3.5 w-3.5" />
+                  关系 CSV
+                </a>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs">
+                <a href={`/api/books/${book.id}/export?type=json`} download>
+                  <Download className="h-3.5 w-3.5" />
+                  JSON
+                </a>
+              </Button>
+            </>
+          ) : null}
+          <Button asChild variant="outline" className="gap-2">
+            <Link href={`/book/${book.id}`}>
+              打开图谱
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-4">
