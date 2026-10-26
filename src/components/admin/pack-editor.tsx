@@ -137,8 +137,12 @@ export function PackEditor({
       window.setTimeout(() => {
         // 按「组内任一成员」匹配：体检点的是实体规范名，它可能是组的非首成员
         // （如 `鲍廷玺` 在 `鲍廷玺 = 姑丈人` 里是首成员，但 `姑丈` 这类可能是别的组的成员）。
-        const target = document.querySelector(`[data-alias-member~="${CSS.escape(name)}"]`);
-        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+        // 目标组不存在时（名字不在任何别名组里）退回到配置卡本身 ——
+        // 后台「去改配置」链接就是靠这个兜底，否则点了页面纹丝不动。
+        const target =
+          document.querySelector(`[data-alias-member~="${CSS.escape(name)}"]`) ??
+          document.getElementById("pack-card");
+        target?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 50);
       window.setTimeout(() => {
         setHighlighted(null);
@@ -328,7 +332,7 @@ export function PackEditor({
   }
 
   return (
-    <Card className={className}>
+    <Card id="pack-card" className={className}>
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

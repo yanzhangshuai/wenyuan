@@ -48,6 +48,25 @@ function summarize(row: FeedbackRow): string {
   }
 }
 
+/**
+ * 「去改配置」的落点。
+ *
+ * 错并 / 缺别名指向具体的别名组（`#alias-<名字>`）；漏人没有可定位的组，
+ * 退到配置卡本身（`#pack-card`）。编辑器在找不到目标组时也会滚到卡片 ——
+ * 否则点了页面纹丝不动，用户会以为链接坏了。
+ */
+function configHref(row: FeedbackRow): string {
+  const base = `/admin/books/${row.bookId}`;
+  switch (row.payload.kind) {
+    case "wrong_merge":
+      return `${base}#alias-${encodeURIComponent(row.payload.names[0] ?? "")}`;
+    case "missing_alias":
+      return `${base}#alias-${encodeURIComponent(row.payload.name)}`;
+    default:
+      return `${base}#pack-card`;
+  }
+}
+
 function formatTime(iso: string): string {
   const date = new Date(iso);
   const pad = (value: number): string => String(value).padStart(2, "0");
@@ -145,8 +164,14 @@ export function FeedbackTable({ rows }: FeedbackTableProps) {
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {row.kind === "wrong_type" ? null : (
                   <span className="text-muted-foreground text-[11px]">
-                    ⚠️ 这条不能一键修：接受只是记账，实际要
-                    {row.kind === "missing_entity" ? "重新解析" : "改别名组后重新解析"}
+                    ⚠️ 这条不能一键修：
+                    {row.kind === "missing_entity" ? "需要重新解析" : "要改别名组后重新解析"}
+                    <a
+                      href={configHref(row)}
+                      className="text-primary ml-1 underline underline-offset-2"
+                    >
+                      去改配置 →
+                    </a>
                   </span>
                 )}
                 <Input
