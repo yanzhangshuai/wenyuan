@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, LayoutDashboard, LogOut, Plus } from "lucide-react";
+import { BookOpen, LayoutDashboard, LogOut, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -21,7 +21,8 @@ import { logout } from "@/lib/services/auth";
 /** 一级导航（单一来源，避免 JSX 里散落路径字面量）。 */
 const NAV_ITEMS = [
   { href: "/admin", label: "仪表盘", icon: LayoutDashboard, exact: true },
-  { href: "/admin/books", label: "书籍", icon: BookOpen, exact: false }
+  { href: "/admin/books", label: "书籍", icon: BookOpen, exact: false },
+  { href: "/admin/users", label: "用户", icon: Users, exact: false }
 ] as const;
 
 export interface AdminHeaderProps {

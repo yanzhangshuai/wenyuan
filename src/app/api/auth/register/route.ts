@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { defaultRedirectForRole } from "@/lib/auth";
 import { jsonFail, jsonOk, readJson } from "@/server/http/json";
+import { isRegistrationOpen } from "@/server/modules/auth/config";
 import { registerUser } from "@/server/modules/auth/service";
 import { createSession } from "@/server/modules/auth/session";
 
@@ -10,6 +11,8 @@ import { createSession } from "@/server/modules/auth/session";
  *
  * 自助注册：**角色恒为 `VIEWER`**（只读），首个管理员由 `scripts/seed-admin.ts` 创建。
  * 注册成功后直接建立会话，省去「注册完再登录一次」的摩擦。
+ *
+ * 可用 `ALLOW_REGISTRATION=0` 关闭（默认开放）。
  */
 
 /** 请求体 Schema。 */
@@ -21,6 +24,10 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: Request): Promise<Response> {
+  if (!isRegistrationOpen()) {
+    return jsonFail("registration_closed", "注册已关闭，请联系管理员开通账号", 403);
+  }
+
   const body = await readJson(request);
   const parsed = registerSchema.safeParse(body);
   if (!parsed.success) {
