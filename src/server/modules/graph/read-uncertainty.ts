@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { connection } from "next/server";
 import { cache } from "react";
 
@@ -14,6 +14,7 @@ import {
   books,
   chapters,
   entities,
+  graphOverrides,
   entityAliases,
   entityMentions,
   evidenceSpans,
@@ -182,7 +183,35 @@ export const loadUncertainty = cache(async (bookId: string): Promise<Uncertainty
     )
   }));
 
-  return computeUncertainty({ entities: entityInputs, relations: relationInputs });
+  /**
+   * 覆盖层：被隐藏的实体不应出现在不确定性报告里。
+   *
+   * 不加这一步的话，同一页面会出现两个矛盾的数字 ——
+   * 图谱画布上节点没了，顶部「不确定 N」却还算着它（实测 `姑丈`）。
+   *
+   * 做法是**过滤输入**而不是过滤结果：`computeUncertainty` 会自己重算
+   * coverage（entityTotal / relationTotal / byKind），手改结果反而容易漏。
+   */
+  const hiddenRows = await db
+    .select({ targetName: graphOverrides.targetName })
+    .from(graphOverrides)
+    .where(and(eq(graphOverrides.bookId, bookId), eq(graphOverrides.kind, "hide_entity")));
+
+  if (hiddenRows.length === 0) {
+    return computeUncertainty({ entities: entityInputs, relations: relationInputs });
+  }
+
+  const hiddenNames = new Set(hiddenRows.map((row) => row.targetName));
+  const hiddenIds = new Set(
+    entityInputs.filter((entity) => hiddenNames.has(entity.canonical)).map((entity) => entity.id)
+  );
+
+  return computeUncertainty({
+    entities : entityInputs.filter((entity) => !hiddenIds.has(entity.id)),
+    relations: relationInputs.filter(
+      (relation) => !hiddenIds.has(relation.sourceId) && !hiddenIds.has(relation.targetId)
+    )
+  });
 });
 
 /** 两个实体的提及段落集合交的大小；任一侧无提及时返回 0。 */
