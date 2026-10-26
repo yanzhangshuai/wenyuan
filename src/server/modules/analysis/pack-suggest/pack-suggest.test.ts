@@ -1,5 +1,10 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// `suggest.ts` 会间接拉起 `ai/client`，后者 `import "server-only"`。
+// vitest 没有 react-server condition，`server-only` 会走 client 分支直接抛错，
+// 因此必须显式置空（与 `analysis-status.test.ts`、`knowledge.test.ts` 同一做法）。
+vi.mock("server-only", () => ({}));
 
 import { formatGroupsText, formatNounsText, parseGroupsText, parseNounsText } from "@/lib/pack-text";
 import { mergeCandidates, scanAppellations } from "@/server/modules/analysis/pack-suggest/appellations";

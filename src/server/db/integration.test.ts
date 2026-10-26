@@ -88,6 +88,7 @@ const EXPECTED_TABLES = [
   "analysis_calls",
   "analysis_issues",
   "analysis_runs",
+  "book_packs",
   "books",
   "chapters",
   "entities",
@@ -95,6 +96,7 @@ const EXPECTED_TABLES = [
   "entity_mentions",
   "evidence_spans",
   "external_knowledge",
+  "pack_feedback",
   "paragraphs",
   "relation_types",
   "relationships",
@@ -144,7 +146,7 @@ afterAll(async () => {
 });
 
 describe("迁移", () => {
-  it("建出全部 14 张表", async () => {
+  it("建出全部 16 张表", async () => {
     const result = await pglite.query<{ tablename: string }>(
       "select tablename from pg_tables where schemaname = 'public' order by tablename"
     );
