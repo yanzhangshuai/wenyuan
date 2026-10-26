@@ -43,6 +43,13 @@
       "when": 1792729700588,
       "tag": "0005_book_packs",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792976776614,
+      "tag": "0006_pack_metrics",
+      "breakpoints": true
     }
   ]
 }

@@ -69,6 +69,7 @@ export async function GET(
             properNouns   : row.properNouns,
             aliasGroups   : row.aliasGroups,
             suggestionNote: row.suggestionNote,
+            metrics       : row.metrics,
             updatedAt     : row.updatedAt.toISOString()
           },
     effective: {

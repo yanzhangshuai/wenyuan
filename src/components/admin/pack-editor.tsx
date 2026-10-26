@@ -18,6 +18,7 @@ import {
   parseNounsText
 } from "@/lib/pack-text";
 import { cn } from "@/lib/utils";
+import { METRIC_LABELS, gradeMetrics, type PackMetrics } from "@/server/modules/analysis/pack-suggest/metrics";
 
 /**
  * 解析条件编辑器（Client Component）。
@@ -43,6 +44,8 @@ export interface StoredPack {
   properNouns   : { name: string; postag: number }[];
   aliasGroups   : string[][];
   suggestionNote: string | null;
+  /** 生成质量指标（自动生成的配置才有）。 */
+  metrics?      : PackMetrics | null;
   updatedAt     : string;
 }
 
@@ -221,6 +224,9 @@ export function PackEditor({
   }
 
   const isDraft = stored?.status === "draft";
+  // 提前取出并收窄类型：JSX 条件里的 `stored?.metrics` 不会把后续表达式收窄成非空。
+  const metrics = stored?.metrics ?? null;
+  const grades = metrics === null ? null : gradeMetrics(metrics);
 
   return (
     <Card className={className}>
@@ -244,6 +250,29 @@ export function PackEditor({
           当前生效：{effective.packLabel} · {effective.properNounCount} 个专名 ·{" "}
           {effective.aliasGroupCount} 个别名组
         </p>
+
+        {metrics !== null && grades !== null ? (
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 border-y py-2 text-xs">
+            {(Object.keys(METRIC_LABELS) as (keyof typeof METRIC_LABELS)[]).map((key) => {
+              const level = grades[key];
+              return (
+                <span key={key} className="flex items-center gap-1.5" title={METRIC_LABELS[key].hint}>
+                  <span
+                    className={cn(
+                      "size-2 rounded-full",
+                      level === "good" ? "bg-emerald-500" : level === "warn" ? "bg-amber-500" : "bg-red-500"
+                    )}
+                  />
+                  <span className="text-muted-foreground">{METRIC_LABELS[key].label}</span>
+                  <span className="font-medium tabular-nums">{(metrics[key] * 100).toFixed(1)}%</span>
+                </span>
+              );
+            })}
+            <span className="text-muted-foreground ml-auto">
+              指标偏低时，解析结果的错并或漏人风险更高
+            </span>
+          </div>
+        ) : null}
 
         {isDraft ? (
           <Alert>

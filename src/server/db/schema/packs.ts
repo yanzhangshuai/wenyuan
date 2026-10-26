@@ -1,5 +1,7 @@
 import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
+import type { PackMetrics } from "@/server/modules/analysis/pack-suggest/metrics";
+
 import { books } from "./books";
 
 /**
@@ -59,6 +61,14 @@ export const bookPacks = pgTable(
 
     /** 生成建议的留档（L2 的模型、成本、候选数）。人工填的为 `null`。 */
     suggestionNote: text("suggestion_note"),
+
+    /**
+     * 生成质量指标（只有自动生成的配置有）。
+     *
+     * 为什么存库而不是每次现算：指标里的「被砍掉的别名数」是**生成过程**的产物，
+     * 事后从最终配置里算不出来（那些别名已经不在库里了）。
+     */
+    metrics: jsonb("metrics").$type<PackMetrics | null>(),
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
