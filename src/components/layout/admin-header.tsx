@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, LayoutDashboard, LogOut, Plus, Users } from "lucide-react";
+import { BookOpen, LayoutDashboard, LogOut, MessageSquareWarning, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,15 +13,17 @@ import { logout } from "@/lib/services/auth";
 /**
  * 后台顶部导航（Client Component）。
  *
- * 为什么用 header 而不是侧边栏：本期一级模块只有 2 个（仪表盘 / 书籍），
+ * 为什么用 header 而不是侧边栏：一级模块数量少（仪表盘 / 书籍 / 反馈 / 用户），
  * 侧边栏会恒定吃掉约 240px 宽度，而书籍表有 7 列，宽度比导航更稀缺。
- * 扩展条件：一级模块 ≥4 时再换侧边栏（导航项已集中为 `NAV_ITEMS`，改壳不改页）。
+ * 扩展条件：一级模块 ≥5 时再换侧边栏（导航项已集中为 `NAV_ITEMS`，改壳不改页）。
+ * 当前 4 项（仪表盘/书籍/反馈/用户）在 1440px 下仍宽裕。
  */
 
 /** 一级导航（单一来源，避免 JSX 里散落路径字面量）。 */
 const NAV_ITEMS = [
   { href: "/admin", label: "仪表盘", icon: LayoutDashboard, exact: true },
   { href: "/admin/books", label: "书籍", icon: BookOpen, exact: false },
+  { href: "/admin/feedback", label: "反馈", icon: MessageSquareWarning, exact: false },
   { href: "/admin/users", label: "用户", icon: Users, exact: false }
 ] as const;
 
