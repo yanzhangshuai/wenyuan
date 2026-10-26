@@ -228,6 +228,34 @@ export function PackEditor({
   const metrics = stored?.metrics ?? null;
   const grades = metrics === null ? null : gradeMetrics(metrics);
 
+  /**
+   * 逐组审核用的视图数据。
+   *
+   * 保留**原始行号**而不是解析后的下标：`parseGroupsText` 会丢弃单元素行，
+   * 用它算出来的下标去删原始行会错位（删掉相邻的那组）。
+   */
+  const groupLines = groupsText
+    .split("\n")
+    .map((line, lineIndex) => ({ line: line.trim(), lineIndex }))
+    .filter((item) => item.line.length > 0 && item.line.split(/[=＝]/u).length >= 2)
+    .map((item) => ({
+      ...item,
+      members: item.line
+        .split(/[=＝]/u)
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0)
+    }));
+
+  /** 专名表里的名字集合：用来发现「别名组引用了词典里没有的名字」。 */
+  const nounNames = new Set(parseNounsText(nounsText).map((item) => item.name));
+
+  /** 删掉第 `lineIndex` 行（逐组审核的「剔除」动作）。 */
+  function removeGroupLine(lineIndex: number): void {
+    const lines = groupsText.split("\n");
+    lines.splice(lineIndex, 1);
+    setGroupsText(lines.join("\n"));
+  }
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -329,7 +357,7 @@ export function PackEditor({
             </Label>
             <Textarea
               id="pack-groups"
-              className="h-64 font-mono text-xs"
+              className="h-40 font-mono text-xs"
               value={groupsText}
               onChange={(event) => {
                 setGroupsText(event.target.value);
@@ -339,6 +367,45 @@ export function PackEditor({
             <p className="text-muted-foreground text-xs">
               ⚠️ 别名组是「声明即断言」：写错会让两个人被无条件合并。只写能回原文逐对辩护的组。
             </p>
+
+            {groupLines.length === 0 ? null : (
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
+                <div className="text-muted-foreground flex items-center justify-between pb-1 text-[11px]">
+                  <span>逐组审核 · 共 {groupLines.length} 组</span>
+                  <span>黄色 = 组内有名字不在专名表里</span>
+                </div>
+                {groupLines.map((group) => {
+                  const missing = group.members.filter((member) => !nounNames.has(member));
+                  return (
+                    <div
+                      key={group.lineIndex}
+                      className={cn(
+                        "flex items-center gap-2 rounded px-1.5 py-1 text-xs",
+                        missing.length > 0 ? "bg-amber-500/10" : "hover:bg-muted/50"
+                      )}
+                    >
+                      <span className="font-mono">{group.members.join(" = ")}</span>
+                      {missing.length > 0 ? (
+                        <span className="text-[11px] text-amber-600">
+                          「{missing.join("」「")}」不在专名表
+                        </span>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-destructive ml-auto h-6 px-1.5 text-[11px]"
+                        onClick={() => {
+                          removeGroupLine(group.lineIndex);
+                        }}
+                      >
+                        剔除
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
