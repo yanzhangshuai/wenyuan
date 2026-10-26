@@ -5,6 +5,7 @@ import { EntityProfileView } from "@/components/graph/EntityProfileView";
 import { ExternalKnowledgeSection } from "@/components/graph/ExternalKnowledgeSection";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
 import { GraphSkeleton } from "@/components/ui/states";
+import { FeedbackButton } from "@/components/viewer/feedback-button";
 import { loadExternalKnowledgeForBook } from "@/server/modules/graph/read-knowledge";
 import { loadEntityProfileWithRelations } from "@/server/modules/graph/read-profile";
 
@@ -81,6 +82,11 @@ function ProfileSection({ dataPromise, knowledgePromise, bookId }: ProfileSectio
 
   return (
     <>
+      {/* 读者反馈入口：放在档案顶部而不是底部 —— 发现问题时人正看着这条档案，
+          滚到底部才能报告，多数人会直接放弃。 */}
+      <div className="mb-3 flex justify-end">
+        <FeedbackButton bookId={bookId} entityName={data.profile.name} />
+      </div>
       {/* 外部资料分区（三期）：带来源、可复核；与下方「本书信息」视觉分开。
           showWhenEmpty：即使暂无资料也展示分区与补跑提示 —— 用户至少知道「为什么没有简介」。 */}
       <ExternalKnowledgeSection items={externalItems} showWhenEmpty />
