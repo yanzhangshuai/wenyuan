@@ -146,7 +146,7 @@ export async function buildSuggestedPack(bookId: string): Promise<BuildPackResul
   }
 
   // L2：建议（一次调用）。
-  const outcome = await suggestAliasGroups(book.title, sent);
+  const outcome = await suggestAliasGroups(book.title, sent, fullText);
 
   const rejectedNames = new Set(outcome.rejects.map((item) => item.name));
   const rawNouns = merged

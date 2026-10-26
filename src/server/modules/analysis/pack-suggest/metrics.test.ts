@@ -82,10 +82,14 @@ describe("gradeMetrics（阈值：只对极端值报警）", () => {
 
   const withGroupRate = (groupRate: number) => gradeMetrics({ ...computePackMetrics(base), groupRate });
 
-  it("进组率：<1% 红（几乎没分组），1–3% 黄，≥3% 绿", () => {
+  it("进组率：<1% 红（几乎没分组），1–3% 黄，3–70% 绿，>70% 黄（过度合并）", () => {
     expect(withGroupRate(0.005).groupRate).toBe("bad");
     expect(withGroupRate(0.02).groupRate).toBe("warn");
     expect(withGroupRate(0.03).groupRate).toBe("good");
+    // 实测红楼 10 回全文校验后是 36% —— 古典小说一人多称，属正常，不该报警。
+    expect(withGroupRate(0.36).groupRate).toBe("good");
+    // 超过 70% 说明在把不同的人并成一人，比漏并更难发现。
+    expect(withGroupRate(0.75).groupRate).toBe("warn");
   });
 
   const withRejectRate = (rejectRate: number) => gradeMetrics({ ...computePackMetrics(base), rejectRate });

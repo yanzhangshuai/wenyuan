@@ -88,20 +88,35 @@ export interface SanitizedSuggestion {
 }
 
 /**
- * 确定性关卡：把模型输出收敛到「能被证据支持」的范围内。
+ * 确定性关卡：把模型输出收敛到「能被原文支持」的范围内。
  *
  * 三道过滤，全部可单测：
  * 1. `name` 必须是我们送进去的候选（模型不能凭空造人）；
- * 2. 每个 `alias` 必须在该候选的**证据片段**里字面出现过（编造的别名砍掉）；
+ * 2. 每个 `alias` 必须在**全书正文**里字面出现过（编造的别名砍掉）；
  * 3. 别名不能等于自己，组内去重。
+ *
+ * ## 为什么校验用全文，而不是给模型看的那两条片段
+ *
+ * 实测教训（2026-10-26）：最初用「片段里出现过」当判据，结果证据覆盖率只有 **25.6%** ——
+ * 3/4 的别名被判成编造。但那些别名大多是真的（`怡红公子` 全书出现几十次），
+ * 只是**没落在那两条 80 字的片段里**。
+ *
+ * 根因是把两件事混为一谈：
+ * - **片段**是给模型的上下文（越小越省钱）；
+ * - **证据**是「这本书里到底有没有这个写法」（越全越准）。
+ *
+ * 用片段当证据，等于用「我没让你看到」去否定「它不存在」——
+ * 与项目里「找不到 ≠ 不存在」那条口径坑同型。
  *
  * @param candidates 送进去的候选（含片段）
  * @param raw 模型输出
+ * @param fullText 全书正文（证据范围）
  * @returns 清洗后的建议
  */
 export function sanitizeSuggestions(
   candidates: readonly SuggestCandidate[],
-  raw: RawSuggestion
+  raw: RawSuggestion,
+  fullText: string
 ): SanitizedSuggestion {
   const byName = new Map(candidates.map((item) => [item.name, item]));
   const persons: SanitizedSuggestion["persons"] = [];
@@ -114,7 +129,6 @@ export function sanitizeSuggestions(
     if (candidate === undefined || seenNames.has(person.name)) continue;
     seenNames.add(person.name);
 
-    const evidence = candidate.samples.join("\n");
     const aliases: string[] = [];
     for (const alias of person.aliases) {
       const trimmed = alias.trim();
@@ -138,12 +152,13 @@ export function sanitizeSuggestions(
         });
         continue;
       }
-      // 关卡二：别名必须在证据片段里字面出现（防止模型凭空造写法）。
-      if (!evidence.includes(trimmed)) {
+      // 关卡二：别名必须在**全书正文**里字面出现（防止模型凭空造写法）。
+      // 不用片段做判据 —— 理由见函数头注释（25.6% 那次误杀）。
+      if (!fullText.includes(trimmed)) {
         droppedAliases.push({
           name  : person.name,
           alias : trimmed,
-          reason: "证据片段里找不到该写法"
+          reason: "全书正文里找不到该写法"
         });
         continue;
       }
@@ -218,11 +233,13 @@ export interface SuggestOutcome extends SanitizedSuggestion {
  *
  * @param bookTitle 书名（只用于提示词上下文）
  * @param candidates 候选（调用方已按频次排序并截断）
+ * @param fullText 全书正文（别名校验的证据范围）
  * @returns 清洗后的建议与用量
  */
 export async function suggestAliasGroups(
   bookTitle: string,
-  candidates: readonly SuggestCandidate[]
+  candidates: readonly SuggestCandidate[],
+  fullText: string
 ): Promise<SuggestOutcome> {
   const snapshot = getModelSnapshot();
   const { system, user } = buildSuggestPrompts(bookTitle, candidates);
@@ -250,7 +267,7 @@ export async function suggestAliasGroups(
   }
 
   return {
-    ...sanitizeSuggestions(candidates, parsed.data),
+    ...sanitizeSuggestions(candidates, parsed.data, fullText),
     model    : snapshot.extractModel,
     tokensIn : result.usage.tokensIn,
     tokensOut: result.usage.tokensOut,

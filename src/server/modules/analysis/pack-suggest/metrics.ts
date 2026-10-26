@@ -99,8 +99,15 @@ export function gradeMetrics(metrics: PackMetrics): {
     // 一半以上的别名在原文找不到出处 → 模型明显在编。
     evidenceCoverage:
       metrics.evidenceCoverage < 0.5 ? "bad" : metrics.evidenceCoverage < 0.75 ? "warn" : "good",
-    // 几乎没有名字被归组 → 漏并，同一人会被拆成多个实体。
-    groupRate: metrics.groupRate < 0.01 ? "bad" : metrics.groupRate < 0.03 ? "warn" : "good",
+    // 进组率两头都可能有问题：太低是漏并（同一人拆成多实体），
+    // 太高是过度合并（把不同的人并成一人，比漏并更难发现）。
+    // 上限取 70%：实测红楼 10 回用全文校验后是 36%，属正常（古典小说一人多称）。
+    groupRate:
+      metrics.groupRate < 0.01
+        ? "bad"
+        : metrics.groupRate < 0.03 || metrics.groupRate > 0.7
+          ? "warn"
+          : "good",
     // 两头都可能有问题：拒太多说明把真人物筛掉了，拒太少说明没在筛。
     rejectRate:
       metrics.rejectRate > 0.8 || metrics.rejectRate < 0.05 ? "warn" : "good"

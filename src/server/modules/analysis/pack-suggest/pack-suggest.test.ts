@@ -97,17 +97,19 @@ describe("mergeCandidates", () => {
   });
 });
 
-describe("sanitizeSuggestions", () => {
+describe("sanitizeSuggestions（别名校验用全书正文）", () => {
   const candidates: SuggestCandidate[] = [
     { name: "宝玉", frequency: 300, firstChapter: 1, samples: ["宝玉笑道：“好妹妹。”", "宝二爷来了。"] },
     { name: "李贵", frequency: 20, firstChapter: 2, samples: ["李贵忙道：“是。”"] }
   ];
+  /** 全文：包含片段里的写法，另外含「怡红公子」（片段里没有，但全书有）。 */
+  const fullText = "宝玉笑道：“好妹妹。”宝二爷来了。李贵忙道：“是。”怡红公子题诗。";
 
   it("证据里出现的别名保留", () => {
     const result = sanitizeSuggestions(candidates, {
       persons: [{ name: "宝玉", aliases: ["宝二爷"], reason: "同段出现" }],
       rejects: []
-    });
+    }, fullText);
     expect(result.persons[0]?.aliases).toEqual(["宝二爷"]);
     expect(result.droppedAliases).toHaveLength(0);
   });
@@ -116,25 +118,36 @@ describe("sanitizeSuggestions", () => {
     const result = sanitizeSuggestions(candidates, {
       persons: [{ name: "李贵", aliases: ["李贵忙"], reason: "" }],
       rejects: []
-    });
+    }, fullText);
     expect(result.persons[0]?.aliases).toEqual([]);
     expect(result.droppedAliases[0]?.reason).toContain("动词");
   });
 
-  it("证据片段里没有的别名被砍（防模型编造）", () => {
+  it("片段里没有、但全书正文里有的别名**保留**（曾经误杀过 3/4）", () => {
+    // 2026-10-26 实测：用片段当判据时证据覆盖率只有 25.6%，
+    // 「怡红公子」这类真别名因为没落在那两条 80 字片段里被整批砍掉。
     const result = sanitizeSuggestions(candidates, {
       persons: [{ name: "宝玉", aliases: ["怡红公子"], reason: "" }],
       rejects: []
-    });
+    }, fullText);
+    expect(result.persons[0]?.aliases).toEqual(["怡红公子"]);
+    expect(result.droppedAliases).toHaveLength(0);
+  });
+
+  it("全书正文里都没有的别名被砍（防模型编造）", () => {
+    const result = sanitizeSuggestions(candidates, {
+      persons: [{ name: "宝玉", aliases: ["绛洞花主"], reason: "" }],
+      rejects: []
+    }, fullText);
     expect(result.persons[0]?.aliases).toEqual([]);
-    expect(result.droppedAliases[0]?.reason).toContain("证据片段");
+    expect(result.droppedAliases[0]?.reason).toContain("全书正文");
   });
 
   it("不在候选里的名字被丢弃（模型不能凭空造人）", () => {
     const result = sanitizeSuggestions(candidates, {
       persons: [{ name: "孙悟空", aliases: [], reason: "" }],
       rejects: []
-    });
+    }, fullText);
     expect(result.persons).toHaveLength(0);
   });
 
@@ -142,7 +155,7 @@ describe("sanitizeSuggestions", () => {
     const result = sanitizeSuggestions(candidates, {
       persons: [{ name: "宝玉", aliases: ["宝玉"], reason: "" }],
       rejects: []
-    });
+    }, fullText);
     expect(result.persons[0]?.aliases).toEqual([]);
   });
 
@@ -153,7 +166,7 @@ describe("sanitizeSuggestions", () => {
         { name: "李贵", reason: "言语提示" },
         { name: "不存在", reason: "x" }
       ]
-    });
+    }, fullText);
     expect(result.rejects.map((item) => item.name)).toEqual(["李贵"]);
   });
 });

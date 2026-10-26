@@ -172,6 +172,7 @@ export default async function AdminBookDetailPage({
                 properNouns   : packRow.properNouns,
                 aliasGroups   : packRow.aliasGroups,
                 suggestionNote: packRow.suggestionNote,
+                metrics       : packRow.metrics,
                 updatedAt     : packRow.updatedAt.toISOString()
               }
         }
