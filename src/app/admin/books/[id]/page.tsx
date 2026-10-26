@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnalysisProgressPanel } from "@/components/admin/analysis-progress";
+import { AliasAuditCard } from "@/components/admin/alias-audit-card";
 import { PackEditor } from "@/components/admin/pack-editor";
 import { getDatabase } from "@/server/db/client";
 import { bookPacks } from "@/server/db/schema";
@@ -222,45 +223,12 @@ export default async function AdminBookDetailPage({
       />
 
       {aliasAudit.length > 0 ? (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">别名体检</CardTitle>
-            <CardDescription>
-              别名特别多的实体，通常是错并 —— 把泛称或别人的称谓并了进来。按别名数排序，前几个最可疑。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {aliasAudit.map((row) => (
-              <div key={row.entityId} className="flex flex-wrap items-baseline gap-2 text-sm">
-                {/* 在别名组里 → 可跳转定位；不在 → 错并来自抽取阶段，改配置修不了。 */}
-                {aliasGroupMembers.has(row.canonical) ? (
-                  <a
-                    href={`#alias-${encodeURIComponent(row.canonical)}`}
-                    className="hover:text-primary font-medium underline-offset-2 hover:underline"
-                    title="点击定位到上方的别名组"
-                  >
-                    {row.canonical}
-                  </a>
-                ) : (
-                  <span className="font-medium" title="不在别名组里：错并来自抽取阶段，改配置修不了">
-                    {row.canonical}
-                    <span className="text-muted-foreground ml-1 text-[10px]">（不在组里）</span>
-                  </span>
-                )}
-                <Badge variant={row.aliases.length >= 8 ? "destructive" : "secondary"}>
-                  {row.aliases.length} 个
-                </Badge>
-                <span className="text-muted-foreground text-xs">
-                  {row.aliases.slice(0, 8).join(" / ")}
-                  {row.aliases.length > 8 ? ` …还有 ${String(row.aliases.length - 8)} 个` : ""}
-                </span>
-              </div>
-            ))}
-            <p className="text-muted-foreground border-t pt-2 text-xs">
-              ⚠️ 别名 ≥ 8 个通常意味着错并。点名字可定位到上方的别名组（若它在组里）；要修的话先「复制为自定义配置」，再删掉不属于这个人的写法。
-            </p>
-          </CardContent>
-        </Card>
+        <AliasAuditCard
+          bookId={id}
+          rows={aliasAudit}
+          groupMembers={[...aliasGroupMembers]}
+          className="mb-6"
+        />
       ) : null}
 
       <AnalysisProgressPanel bookId={id} initial={analysisStatus} className="mb-6" />
