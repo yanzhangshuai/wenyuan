@@ -426,6 +426,7 @@ export function GraphView({ bookId, snapshot, uncertainty, externalKnowledge }: 
                   setSelectedNodeId(null);
                 }}
                 profileHref={`/book/${bookId}/entity/${selectedNodeId ?? ""}`}
+                bookId={bookId}
                 marks={selectedNodeMarks}
                 external={selectedNodeExternal}
               />

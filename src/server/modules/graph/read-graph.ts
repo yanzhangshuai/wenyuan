@@ -12,6 +12,8 @@ import {
 } from "@/lib/graph/grouping";
 import { RELATION_TYPES } from "@/lib/relations";
 import { getDatabase } from "@/server/db/client";
+import { graphOverrides } from "@/server/db/schema";
+import { applyOverrides } from "@/server/modules/graph/overrides";
 import {
   chapters,
   entities,
@@ -168,7 +170,7 @@ export const loadGraphSnapshot = cache(async (bookId: string): Promise<GraphSnap
     return { ...edge, evidenceQuotes: quotes, evidenceCount: quotes.length };
   });
 
-  return {
+  const snapshot: GraphSnapshot = {
     bookId            : book.id,
     bookTitle         : book.title,
     chapterCount      : book.chapterCount,
@@ -179,6 +181,24 @@ export const loadGraphSnapshot = cache(async (bookId: string): Promise<GraphSnap
     chapters          : chapterRows satisfies GraphChapter[],
     codeStats         : buildCodeStats(edges)
   };
+
+  /**
+   * 覆盖层：人工修正（隐藏噪声实体 / 改类型）。
+   *
+   * 读时叠加，**不写图谱表** —— `persistGraph` 是 DELETE+重插，
+   * 直接改表会在下次解析时被整体冲掉。
+   * 无覆盖时 `applyOverrides` 原样返回（引用相等），逐字节不变。
+   */
+  const overrides = await db
+    .select({
+      kind      : graphOverrides.kind,
+      targetName: graphOverrides.targetName,
+      payload   : graphOverrides.payload
+    })
+    .from(graphOverrides)
+    .where(eq(graphOverrides.bookId, bookId));
+
+  return applyOverrides(snapshot, overrides).snapshot;
 });
 
 /**

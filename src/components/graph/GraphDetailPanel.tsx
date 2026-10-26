@@ -34,6 +34,11 @@ export interface GraphDetailPanelProps {
    * 档案回答「做过什么」，两者是不同的阅读需求，故需要显式跳转。
    */
   profileHref?    : string;
+  /**
+   * 作品 id（可选）。传入时在档案链接旁渲染「报告问题」——
+   * 读者发现问题时人正看着这个节点，跳去档案页再反馈会丢掉上下文。
+   */
+  bookId?         : string;
   /** 该实体的不确定性标记（二期：逐实体徽标；来自全库报告，按 subjectId 过滤）。 */
   marks?          : readonly UncertaintyMark[];
   /**
@@ -63,6 +68,7 @@ export function GraphDetailPanel({
   onSelectNode,
   onClose,
   profileHref,
+  bookId,
   marks,
   external
 }: GraphDetailPanelProps) {
@@ -93,10 +99,17 @@ export function GraphDetailPanel({
         </button>
       </header>
 
-      {profileHref === undefined ? null : (
-        <a className="graph-detail-profile-link" href={profileHref}>
-          查看人物档案 →
-        </a>
+      {profileHref === undefined && bookId === undefined ? null : (
+        <div className="flex flex-wrap items-center gap-2">
+          {profileHref === undefined ? null : (
+            <a className="graph-detail-profile-link" href={profileHref}>
+              查看人物档案 →
+            </a>
+          )}
+          {bookId === undefined || node === null ? null : (
+            <FeedbackButton bookId={bookId} entityName={node.name} />
+          )}
+        </div>
       )}
 
       {/* 逐实体不确定性徽标（二期）：全库报告按 subjectId 过滤后的该实体标记。 */}

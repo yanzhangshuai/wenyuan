@@ -8,6 +8,7 @@ export * from "./analysis";
 export * from "./entities";
 export * from "./enums";
 export * from "./knowledge";
+export * from "./overrides";
 export * from "./packs";
 export * from "./relations";
 export * from "./users";

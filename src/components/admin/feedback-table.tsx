@@ -59,6 +59,30 @@ export function FeedbackTable({ rows }: FeedbackTableProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
+  /**
+   * 按反馈执行修改（只有 `wrong_type` 能立刻生效，其余由接口返回 422 + 原因）。
+   *
+   * 不把「执行」和「接受」合成一个按钮：接受只是记账，执行会写覆盖层改图谱 ——
+   * 两件事的后果不同，不该共用一个点击。
+   */
+  async function applyFeedback(id: string): Promise<void> {
+    setBusyId(id);
+    try {
+      const response = await fetch(`/api/admin/feedback/${id}/apply`, { method: "POST" });
+      const payload = (await response.json()) as { ok?: boolean; message?: string };
+      if (!response.ok || payload.ok !== true) {
+        toast.error(payload.message ?? "执行失败");
+        return;
+      }
+      toast.success("已改类型，图谱立刻生效");
+      router.refresh();
+    } catch {
+      toast.error("执行失败：网络异常");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function resolve(id: string, status: "accepted" | "rejected"): Promise<void> {
     setBusyId(id);
     try {
@@ -119,6 +143,12 @@ export function FeedbackTable({ rows }: FeedbackTableProps) {
 
             {row.status === "pending" ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
+                {row.kind === "wrong_type" ? null : (
+                  <span className="text-muted-foreground text-[11px]">
+                    ⚠️ 这条不能一键修：接受只是记账，实际要
+                    {row.kind === "missing_entity" ? "重新解析" : "改别名组后重新解析"}
+                  </span>
+                )}
                 <Input
                   className="h-8 max-w-xs text-xs"
                   placeholder="备注（可选，接受时写改了什么）"
@@ -128,17 +158,33 @@ export function FeedbackTable({ rows }: FeedbackTableProps) {
                   }}
                   disabled={isBusy}
                 />
-                <Button
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => {
-                    void resolve(row.id, "accepted");
-                  }}
-                  disabled={isBusy}
-                >
-                  {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                  接受
-                </Button>
+                {row.kind === "wrong_type" ? (
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      void applyFeedback(row.id);
+                    }}
+                    disabled={isBusy}
+                    title="写覆盖层改类型，图谱立刻生效"
+                  >
+                    {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    执行修改
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      void resolve(row.id, "accepted");
+                    }}
+                    disabled={isBusy}
+                    title="仅记账；实际修改需要改配置后重新解析"
+                  >
+                    {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    接受
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
