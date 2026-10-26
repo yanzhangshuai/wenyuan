@@ -2,7 +2,7 @@
 
 import { Copy, Loader2, Play, Save, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -111,6 +111,46 @@ export function PackEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
+  /** 被定位高亮的组（组首名字）。从别名体检点过来时用。 */
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+
+  /**
+   * 响应 `#alias-<名字>` 锚点：滚动到对应别名组并短暂高亮。
+   *
+   * 为什么用 hash 而不是 props：体检卡片在详情页、编辑器在这里，
+   * 两者不是父子关系。hash 是唯一不需要把状态提升到页面层的办法，
+   * 而且刷新/分享链接也能定位。
+   */
+  useEffect(() => {
+    const apply = (): void => {
+      const raw = window.location.hash;
+      if (!raw.startsWith("#alias-")) return;
+      let name = "";
+      try {
+        name = decodeURIComponent(raw.slice("#alias-".length));
+      } catch {
+        return;
+      }
+      if (name.length === 0) return;
+      setHighlighted(name);
+      // 等一帧再滚：刚 setState 时 DOM 里可能还没有目标元素（配置刚复制完的情况）。
+      window.setTimeout(() => {
+        // 按「组内任一成员」匹配：体检点的是实体规范名，它可能是组的非首成员
+        // （如 `鲍廷玺` 在 `鲍廷玺 = 姑丈人` 里是首成员，但 `姑丈` 这类可能是别的组的成员）。
+        const target = document.querySelector(`[data-alias-member~="${CSS.escape(name)}"]`);
+        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+      window.setTimeout(() => {
+        setHighlighted(null);
+      }, 2600);
+    };
+
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => {
+      window.removeEventListener("hashchange", apply);
+    };
+  }, []);
 
   /**
    * 把内置包复制到库里（之后可自由编辑）。
@@ -410,9 +450,15 @@ export function PackEditor({
                   return (
                     <div
                       key={group.lineIndex}
+                      id={`alias-${group.members[0] ?? ""}`}
+                      data-alias-member={group.members.join(" ")}
                       className={cn(
-                        "flex items-center gap-2 rounded px-1.5 py-1 text-xs",
-                        missing.length > 0 ? "bg-amber-500/10" : "hover:bg-muted/50"
+                        "flex items-center gap-2 rounded px-1.5 py-1 text-xs transition-colors",
+                        highlighted !== null && group.members.includes(highlighted)
+                          ? "bg-primary/15 ring-primary/40 ring-1"
+                          : missing.length > 0
+                            ? "bg-amber-500/10"
+                            : "hover:bg-muted/50"
                       )}
                     >
                       <span className="font-mono">{group.members.join(" = ")}</span>

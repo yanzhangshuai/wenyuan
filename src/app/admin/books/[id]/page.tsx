@@ -85,6 +85,15 @@ export default async function AdminBookDetailPage({
   const effectivePack = await loadWorkPack(id, book.title);
   // 别名体检：别名特别多的实体通常是错并（实测儒林 `姑丈` 7 个、红楼 `二姨` 12 个）。
   const aliasAudit = book.entityCount > 0 ? await loadAliasAudit(id) : [];
+  /**
+   * 体检项里哪些名字**在别名组里**。
+   *
+   * 这决定「点名字能不能跳过去」：体检读的是图谱的 `entity_aliases`，
+   * 而能改的只有配置的 `aliasGroups` —— 两者不是同一份数据。
+   * 实测儒林 8 个体检项里只有 1 个（`杜慎卿`）在组里，其余 7 个的错并来自抽取阶段，
+   * 改配置修不了。不给链接 + 写明原因，比点了没反应诚实。
+   */
+  const aliasGroupMembers = new Set((effectivePack.pack.aliasGroups ?? []).flat());
 
   /**
    * 库里没有配置、但命中内置包时，把内置包的内容**预填**到编辑器。
@@ -223,7 +232,21 @@ export default async function AdminBookDetailPage({
           <CardContent className="space-y-2">
             {aliasAudit.map((row) => (
               <div key={row.entityId} className="flex flex-wrap items-baseline gap-2 text-sm">
-                <span className="font-medium">{row.canonical}</span>
+                {/* 在别名组里 → 可跳转定位；不在 → 错并来自抽取阶段，改配置修不了。 */}
+                {aliasGroupMembers.has(row.canonical) ? (
+                  <a
+                    href={`#alias-${encodeURIComponent(row.canonical)}`}
+                    className="hover:text-primary font-medium underline-offset-2 hover:underline"
+                    title="点击定位到上方的别名组"
+                  >
+                    {row.canonical}
+                  </a>
+                ) : (
+                  <span className="font-medium" title="不在别名组里：错并来自抽取阶段，改配置修不了">
+                    {row.canonical}
+                    <span className="text-muted-foreground ml-1 text-[10px]">（不在组里）</span>
+                  </span>
+                )}
                 <Badge variant={row.aliases.length >= 8 ? "destructive" : "secondary"}>
                   {row.aliases.length} 个
                 </Badge>
@@ -234,7 +257,7 @@ export default async function AdminBookDetailPage({
               </div>
             ))}
             <p className="text-muted-foreground border-t pt-2 text-xs">
-              ⚠️ 别名 ≥ 8 个通常意味着错并。要修的话，先「复制为自定义配置」，再在别名组里删掉不属于这个人的写法。
+              ⚠️ 别名 ≥ 8 个通常意味着错并。点名字可定位到上方的别名组（若它在组里）；要修的话先「复制为自定义配置」，再删掉不属于这个人的写法。
             </p>
           </CardContent>
         </Card>
