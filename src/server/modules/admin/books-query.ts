@@ -3,7 +3,15 @@ import "server-only";
 import { desc, eq, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/server/db/client";
-import { analysisCalls, analysisRuns, books, chapters, entities, relationships } from "@/server/db/schema";
+import {
+  analysisCalls,
+  analysisRuns,
+  books,
+  chapters,
+  entities,
+  entityAliases,
+  relationships
+} from "@/server/db/schema";
 import { computeAnalysisPercent, isProgressStage } from "@/server/modules/admin/analysis-status";
 
 /**
@@ -225,4 +233,59 @@ export async function loadBookDetail(bookId: string): Promise<AdminBookDetail | 
       };
     })
   };
+}
+
+/**
+ * 别名体检：找出「别名特别多」的实体。
+ *
+ * ## 为什么这是个有效的错并信号
+ *
+ * 一个角色通常有 2–4 个称呼。别名数达到 6 以上时，大概率混进了：
+ * - **泛称**（实测儒林的 `姑丈` 收了 7 个、红楼的 `二姨` 收了 12 个 —— 这两个根本不是个体）；
+ * - **别人的称谓**（实测 `鲍廷玺` 的别名含 `姑丈人`/`姑太爷`）。
+ *
+ * 图上找错并几乎不可能（767 个节点），但按别名数排序，前十行就能看出问题。
+ * 这也是「导出 CSV」的意外价值 —— 卡片只是把它做进了页面。
+ */
+export interface AliasAuditRow {
+  entityId : string;
+  canonical: string;
+  type     : string;
+  aliases  : string[];
+}
+
+/**
+ * 读取别名最多的若干个实体。
+ *
+ * @param bookId 作品 id
+ * @param limit 返回条数（默认 10）
+ * @param minAliases 最低别名数（默认 5 —— 低于这个数基本都是正常的多称呼）
+ */
+export async function loadAliasAudit(
+  bookId: string,
+  limit = 10,
+  minAliases = 5
+): Promise<AliasAuditRow[]> {
+  const db = getDatabase();
+  const rows = await db
+    .select({
+      entityId : entities.id,
+      canonical: entities.canonical,
+      type     : entities.type,
+      aliases  : sql<string[]>`array_agg(${entityAliases.alias} order by ${entityAliases.alias})`
+    })
+    .from(entities)
+    .innerJoin(entityAliases, eq(entityAliases.entityId, entities.id))
+    .where(eq(entities.bookId, bookId))
+    .groupBy(entities.id, entities.canonical, entities.type)
+    .having(sql`count(${entityAliases.alias}) >= ${minAliases}`)
+    .orderBy(sql`count(${entityAliases.alias}) desc`)
+    .limit(limit);
+
+  return rows.map((row) => ({
+    entityId : row.entityId,
+    canonical: row.canonical,
+    type     : row.type,
+    aliases  : row.aliases
+  }));
 }

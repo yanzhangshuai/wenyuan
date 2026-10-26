@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Play, Save, Sparkles } from "lucide-react";
+import { Copy, Loader2, Play, Save, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -110,6 +110,37 @@ export function PackEditor({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
+
+  /**
+   * 把内置包复制到库里（之后可自由编辑）。
+   *
+   * 内置包在代码里，页面改不了 —— 没有这一步，儒林/红楼的配置页就是只读的。
+   */
+  async function handleCopyBuiltin(): Promise<void> {
+    setIsCopying(true);
+    try {
+      const response = await fetch(`/api/admin/books/${bookId}/pack/copy-builtin`, { method: "POST" });
+      const payload = (await response.json()) as {
+        ok?     : boolean;
+        message?: string;
+        properNounCount?: number;
+        aliasGroupCount?: number;
+      };
+      if (!response.ok || payload.ok !== true) {
+        toast.error(payload.message ?? "复制失败");
+        return;
+      }
+      await reload();
+      toast.success("已复制为自定义配置", {
+        description: `${String(payload.properNounCount ?? 0)} 个专名 · ${String(payload.aliasGroupCount ?? 0)} 个别名组，现在可以改了`
+      });
+    } catch {
+      toast.error("复制失败：网络异常");
+    } finally {
+      setIsCopying(false);
+    }
+  }
 
   async function reload(): Promise<StoredPack | null> {
     const response = await fetch(`/api/admin/books/${bookId}/pack`, { cache: "no-store" });
@@ -410,24 +441,33 @@ export function PackEditor({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => {
-              void handleGenerate();
-            }}
-            // 内置包的书不提供自动生成：实测红楼生成出 145 专名 / 3 组，
-            // 远低于内置的 163 / 32 —— 覆盖等于用未验证配置换掉金标基线。
-            disabled={isGenerating || isSaving || (stored === null && builtinPack !== null)}
-            title={
-              stored === null && builtinPack !== null
-                ? "已有人工验证过的内置包，不需要自动生成"
-                : undefined
-            }
-          >
-            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {isGenerating ? "正在扫描全书…" : "自动生成建议"}
-          </Button>
+          {stored === null && builtinPack !== null ? (
+            // 内置包场景：自动生成被禁（实测质量明显更低），只给「复制到库」。
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                void handleCopyBuiltin();
+              }}
+              disabled={isGenerating || isSaving || isStarting || isCopying}
+              title="把内置包复制一份到库里，之后可以自由编辑"
+            >
+              {isCopying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+              复制为自定义配置
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => {
+                void handleGenerate();
+              }}
+              disabled={isGenerating || isSaving || isStarting}
+            >
+              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {isGenerating ? "正在扫描全书…" : "自动生成建议"}
+            </Button>
+          )}
           <Button
             variant={canStart ? "outline" : "default"}
             className="gap-2"

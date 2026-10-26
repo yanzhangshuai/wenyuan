@@ -13,7 +13,7 @@ import { PackEditor } from "@/components/admin/pack-editor";
 import { getDatabase } from "@/server/db/client";
 import { bookPacks } from "@/server/db/schema";
 import { loadAnalysisStatus } from "@/server/modules/admin/analysis-status";
-import { loadBookDetail } from "@/server/modules/admin/books-query";
+import { loadAliasAudit, loadBookDetail } from "@/server/modules/admin/books-query";
 import { loadWorkPack } from "@/server/modules/analysis/genre-pack/load";
 
 /**
@@ -83,6 +83,8 @@ export default async function AdminBookDetailPage({
   const db = getDatabase();
   const [packRow] = await db.select().from(bookPacks).where(eq(bookPacks.bookId, id)).limit(1);
   const effectivePack = await loadWorkPack(id, book.title);
+  // 别名体检：别名特别多的实体通常是错并（实测儒林 `姑丈` 7 个、红楼 `二姨` 12 个）。
+  const aliasAudit = book.entityCount > 0 ? await loadAliasAudit(id) : [];
 
   /**
    * 库里没有配置、但命中内置包时，把内置包的内容**预填**到编辑器。
@@ -209,6 +211,34 @@ export default async function AdminBookDetailPage({
           aliasGroupCount : effectivePack.aliasGroupCount
         }}
       />
+
+      {aliasAudit.length > 0 ? (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg">别名体检</CardTitle>
+            <CardDescription>
+              别名特别多的实体，通常是错并 —— 把泛称或别人的称谓并了进来。按别名数排序，前几个最可疑。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {aliasAudit.map((row) => (
+              <div key={row.entityId} className="flex flex-wrap items-baseline gap-2 text-sm">
+                <span className="font-medium">{row.canonical}</span>
+                <Badge variant={row.aliases.length >= 8 ? "destructive" : "secondary"}>
+                  {row.aliases.length} 个
+                </Badge>
+                <span className="text-muted-foreground text-xs">
+                  {row.aliases.slice(0, 8).join(" / ")}
+                  {row.aliases.length > 8 ? ` …还有 ${String(row.aliases.length - 8)} 个` : ""}
+                </span>
+              </div>
+            ))}
+            <p className="text-muted-foreground border-t pt-2 text-xs">
+              ⚠️ 别名 ≥ 8 个通常意味着错并。要修的话，先「复制为自定义配置」，再在别名组里删掉不属于这个人的写法。
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <AnalysisProgressPanel bookId={id} initial={analysisStatus} className="mb-6" />
 
