@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Suspense, use } from "react";
 
@@ -6,6 +7,7 @@ import { GraphSkeleton } from "@/components/ui/states";
 import { loadGraphSnapshot } from "@/server/modules/graph/read-graph";
 import { loadExternalKnowledgeForBook } from "@/server/modules/graph/read-knowledge";
 import { loadUncertainty } from "@/server/modules/graph/read-uncertainty";
+import { getAuthContext } from "@/server/modules/auth/session";
 
 /**
  * 作品人物关系图谱页（`(graph)` 路由组 —— 沉浸式全屏，无全局顶栏）。
@@ -36,16 +38,21 @@ export default async function BookGraphPage({ params }: BookGraphPageProps) {
   const uncertaintyPromise = loadUncertainty(bookId);
   // 外部知识（三期判定层）：独立表、读时叠加，**不合并进 snapshot**（UI 分区展示）。
   const knowledgePromise = loadExternalKnowledgeForBook(bookId);
+  // 导出需要登录（接口会校验），未登录就不渲染入口 —— 避免点了才报 401。
+  const auth = await getAuthContext();
 
   return (
-    <Suspense fallback={<GraphSkeleton />}>
-      <GraphSection
-        bookId={bookId}
-        snapshotPromise={snapshotPromise}
-        uncertaintyPromise={uncertaintyPromise}
-        knowledgePromise={knowledgePromise}
-      />
-    </Suspense>
+    <>
+      <Suspense fallback={<GraphSkeleton />}>
+        <GraphSection
+          bookId={bookId}
+          snapshotPromise={snapshotPromise}
+          uncertaintyPromise={uncertaintyPromise}
+          knowledgePromise={knowledgePromise}
+        />
+      </Suspense>
+      {auth === null ? null : <ExportFab bookId={bookId} />}
+    </>
   );
 }
 
@@ -78,5 +85,37 @@ function GraphSection({ bookId, snapshotPromise, uncertaintyPromise, knowledgePr
       uncertainty={uncertainty}
       externalKnowledge={externalKnowledge}
     />
+  );
+}
+
+/**
+ * 导出入口（服务端渲染，右下角浮动）。
+ *
+ * 为什么不做进图谱工具栏：工具栏是客户端组件（`GraphView` 内部），
+ * 加一个纯链接的入口不值得把 `GraphView` 的 props 再扩一层。
+ * 浮动面板用 `fixed` 定位，不受 `GraphLayout` 的 `overflow-hidden` 影响。
+ */
+function ExportFab({ bookId }: { bookId: string }) {
+  const items = [
+    { type: "entities", label: "实体 CSV" },
+    { type: "relationships", label: "关系 CSV" },
+    { type: "json", label: "JSON" }
+  ] as const;
+
+  return (
+    <div className="border-border/60 bg-background/90 fixed right-4 bottom-4 z-40 flex items-center gap-0.5 rounded-lg border p-1 shadow-lg backdrop-blur">
+      <span className="text-muted-foreground px-2 text-[11px]">导出</span>
+      {items.map((item) => (
+        <a
+          key={item.type}
+          href={`/api/books/${bookId}/export?type=${item.type}`}
+          download
+          className="hover:bg-muted flex items-center gap-1 rounded px-2 py-1 text-[11px] transition-colors"
+        >
+          <Download className="h-3 w-3" />
+          {item.label}
+        </a>
+      ))}
+    </div>
   );
 }
